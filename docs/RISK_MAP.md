@@ -1,7 +1,8 @@
 # Auralis Risk Map
 
-**Status:** Proposed Phase 3 risk map — owner approval pending  
+**Status:** Approved and published Phase 3 risk map  
 **Assessment date:** July 14, 2026  
+**Phase-gate approval:** Approved by the human owner on July 14, 2026  
 **Evidence state:** Risk identification and experiment design only; no listed experiment has yet been executed  
 **Scope:** OpenAI Build Week 2026 Family Experience
 
@@ -1412,8 +1413,10 @@ For these risks, failure requires the scope or approach to change before the sta
 
 ## 19. Phase status
 
-Phase 3 remains open while this proposed risk map awaits approval, repository creation, validation, publication and explicit phase-gate approval.
+Phase 3 is complete, validated, published and approved by the human owner.
 
-No validation experiment in this document has been executed.
+All identified risks remain governed by their recorded dispositions, experiment triggers and decision deadlines. Phase completion does not imply that any deferred experiment has passed or that any risk has been mitigated.
+
+No validation experiment in this document has yet been executed.
 
 Phase 4 has not been started.
