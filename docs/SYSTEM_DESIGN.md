@@ -1,6 +1,6 @@
 # Auralis Just-Enough System Design
 
-**Status:** Approved Phase 5 system design; publication pending  
+**Status:** Approved, published and formally closed Phase 5 system design  
 **Date:** July 15, 2026  
 **Scope:** Manual-Audiogram Critical-Chain Family Slice with Profile Choice  
 **Evidence state:** Design only; no implementation, deployment or validation experiment has been executed  
@@ -876,7 +876,7 @@ Later evidence may refine provisional numeric parameters without rewriting histo
 
 ## 37. Phase status
 
-Phase 5 remains open pending final diff validation, publication and explicit human phase-gate approval.
+Phase 5 is complete, validated, published and approved by the human owner.
 
 This document records the owner-approved Phase 5 design. No architecture experiment, implementation, dependency selection, deployment or acceptance run has occurred.
 
