@@ -167,35 +167,35 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 | RISK-CLAIM-01 | Claims | Diagnostic, prescriptive or benefit claim | 5 | 3 | 15 HIGH | HIGH | Phase 3 | Before any public claim | DEFERRED |
 | RISK-CLAIM-02 | Claims | Impression of exact individual perception | 5 | 3 | 15 HIGH | HIGH | Phase 3 | Before Phase 4/public artifact | DEFERRED |
 | RISK-CRED-01 | Credibility | Simulation is not audiologically defensible | 5 | 4 | 20 CRITICAL | LOW | Phase 3 | Before Phase 5 approval | DEFERRED |
-| RISK-CRED-02 | Credibility | Audible and visual results are unsynchronised | 4 | 3 | 12 MEDIUM | MEDIUM | Phase 4 | Before Phase 9 acceptance | DEFERRED |
-| RISK-CRED-03 | Credibility | Honest same-source A/B cannot be proved | 5 | 3 | 15 HIGH | MEDIUM | Phase 4 | Before Phase 9 acceptance | DEFERRED |
+| RISK-CRED-02 | Credibility | Audible and visual results are unsynchronised | 4 | 3 | 12 MEDIUM | MEDIUM | Phase 4 | Before Phase 10 first-proof gate | DEFERRED |
+| RISK-CRED-03 | Credibility | Honest same-source A/B cannot be proved | 5 | 3 | 15 HIGH | MEDIUM | Phase 4 | Before Phase 10 first-proof gate | DEFERRED |
 | RISK-CRED-04 | Credibility | One-sided and bilateral support do not differ genuinely | 4 | 3 | 12 MEDIUM | LOW | Phase 4 | Before Phase 10; ≤20 Jul 02:00 | DEFERRED |
-| RISK-CRED-05 | Credibility | Results are indistinct or merely louder | 4 | 4 | 16 HIGH | LOW | Phase 4 | Before Phase 9/10 acceptance | DEFERRED |
-| RISK-SAFE-01 | Audio safety | Unsafe level, clipping, jump, exposure or stop behavior | 5 | 3 | 15 HIGH | MEDIUM | Phase 3 | Before Phase 9 user audio | DEFERRED |
-| RISK-WEB-01 | Browser | Claimed browser behaves differently or lacks support | 4 | 4 | 16 HIGH | HIGH | Phase 5 | Before Phase 5 and Phase 9 | DEFERRED |
-| RISK-WEB-02 | Browser | Autoplay or lifecycle breaks playback | 4 | 4 | 16 HIGH | HIGH | Phase 5 | Before Phase 9 acceptance | DEFERRED |
+| RISK-CRED-05 | Credibility | Results are indistinct or merely louder | 4 | 4 | 16 HIGH | LOW | Phase 4 | Before Phase 10 acceptance | DEFERRED |
+| RISK-SAFE-01 | Audio safety | Unsafe level, clipping, jump, exposure or stop behavior | 5 | 3 | 15 HIGH | MEDIUM | Phase 3 | Before first user-facing Phase 10 audio | DEFERRED |
+| RISK-WEB-01 | Browser | Claimed browser behaves differently or lacks support | 4 | 4 | 16 HIGH | HIGH | Phase 5 | Before Phase 5; Phase 9 shell smoke and Phase 10 product/runtime validation | DEFERRED |
+| RISK-WEB-02 | Browser | Autoplay or lifecycle breaks playback | 4 | 4 | 16 HIGH | HIGH | Phase 5 | Before first user-facing Phase 10 audio | DEFERRED |
 | RISK-WEB-03 | Browser/device | Output-chain variability defeats safety or comparison | 5 | 4 | 20 CRITICAL | HIGH | Phase 3 | Before Phase 5; evidence by Phase 10 | DEFERRED |
 | RISK-PERF-01 | Mobile | Mobile constraints cause glitches, drift or failure | 4 | 3 | 12 MEDIUM | LOW | Phase 5 | Before mobile support claim | DEFERRED |
 | RISK-UX-01 | UX | General users do not understand result or limitation | 4 | 3 | 12 MEDIUM | LOW | Phase 4 | Before Phase 10/video lock | DEFERRED |
 | RISK-UX-02 | Accessibility | Audio-first proof excludes required users | 4 | 3 | 12 MEDIUM | MEDIUM | Phase 4 | Before Phase 10/video lock | DEFERRED |
-| RISK-AI-01 | AI dependency | Live GPT path fails or exceeds latency | 5 | 4 | 20 CRITICAL | MEDIUM | Phase 5 | Before Phase 9; repeat pre-demo | DEFERRED |
+| RISK-AI-01 | AI dependency | Live GPT path fails or exceeds latency | 5 | 4 | 20 CRITICAL | MEDIUM | Phase 5 | Before Phase 10 first-proof gate for initial live-path proof; before Phase 10 acceptance for the reliability threshold; repeat pre-demo validation | DEFERRED |
 | RISK-AI-02 | AI dependency | External service cannot remain available or compliant | 5 | 3 | 15 HIGH | MEDIUM | Phase 5 | Before Phase 6; through judging | DEFERRED |
 | RISK-AI-03 | Product truth | Prepared or fallback result is labelled live | 5 | 3 | 15 HIGH | HIGH | Phase 4 | Before Phase 5 and every capture | DEFERRED |
-| RISK-DEMO-01 | Demo reliability | Integrated main demo fails live | 5 | 4 | 20 CRITICAL | MEDIUM | Phase 4 | Before Phase 9 and rehearsals | DEFERRED |
+| RISK-DEMO-01 | Demo reliability | Integrated main demo fails live | 5 | 4 | 20 CRITICAL | MEDIUM | Phase 4 | Before Phase 10 first-proof gate and pre-demo rehearsals | DEFERRED |
 | RISK-DEMO-02 | Deployment | Judge route unavailable or requires user key | 5 | 3 | 15 HIGH | LOW | Phase 5 | Before submission; through judging | DEFERRED |
-| RISK-DEMO-03 | Video | Auditory hero moment is lost after capture/upload | 5 | 4 | 20 CRITICAL | HIGH | Phase 9 | Before final video upload | DEFERRED |
+| RISK-DEMO-03 | Video | Auditory hero moment is lost after capture/upload | 5 | 4 | 20 CRITICAL | HIGH | Phase 10 | Before final video upload | DEFERRED |
 | RISK-SEC-01 | Data/privacy | Raw profile or context is retained or exposed | 5 | 3 | 15 HIGH | MEDIUM | Phase 5 | Before Phase 5/public testing | DEFERRED |
 | RISK-SEC-02 | Security | Secret or privileged service is exposed | 5 | 3 | 15 HIGH | MEDIUM | Phase 5 | Before deployment/every push | DEFERRED |
 | RISK-COMP-01 | Competition | Codex/GPT and `/feedback` evidence is insufficient | 5 | 3 | 15 HIGH | HIGH | Phase 3 | Before submission approval | DEFERRED |
 | RISK-COMP-02 | Competition | Repository license/access path is non-compliant | 5 | 3 | 15 HIGH | HIGH | Phase 3 | Before 22 Jul 02:00 | DEFERRED |
 | RISK-COMP-03 | Competition | Eligibility, fields, URLs or rule drift invalidates package | 5 | 3 | 15 HIGH | HIGH | Phase 3 | Recheck immediately pre-submit | DEFERRED |
 | RISK-IP-01 | Licensing | Visual provenance or rights are missing | 5 | 3 | 15 HIGH | MEDIUM | Phase 5 | Before public inclusion | DEFERRED |
-| RISK-IP-02 | Licensing | Audio provenance or rights are missing | 5 | 4 | 20 CRITICAL | HIGH | Phase 5 | Before Phase 9/video capture | DEFERRED |
+| RISK-IP-02 | Licensing | Audio provenance or rights are missing | 5 | 4 | 20 CRITICAL | HIGH | Phase 5 | Before first user-facing Phase 10 audio and video capture | DEFERRED |
 | RISK-IP-03 | Licensing | Voice, music, font or icon terms are incompatible | 5 | 3 | 15 HIGH | MEDIUM | Phase 5 | Before public inclusion | DEFERRED |
 | RISK-TIME-01 | Delivery | End-to-end audio proof occurs too late | 5 | 4 | 20 CRITICAL | HIGH | Phase 4 | First proof by 18 Jul 02:00 | DEFERRED |
 | RISK-TIME-02 | Delivery | Mandatory core misses expansion cutoff | 5 | 4 | 20 CRITICAL | HIGH | Phase 4 | 20 Jul 02:00 | DEFERRED |
 | RISK-TIME-03 | Delivery | Hardening/video/submission window is insufficient | 5 | 4 | 20 CRITICAL | HIGH | Phase 4 | Freeze 21 Jul; submit 22 Jul | DEFERRED |
-| RISK-SCENE-01 | Media quality | Family scene is late or not intelligible/coherent | 4 | 4 | 16 HIGH | MEDIUM | Phase 4 | Before Phase 9 acceptance | DEFERRED |
+| RISK-SCENE-01 | Media quality | Family scene is late or not intelligible/coherent | 4 | 4 | 16 HIGH | MEDIUM | Phase 4 | Before Phase 10 first-proof gate | DEFERRED |
 | RISK-DOC-01 | Documentation | Public surfaces make inconsistent claims | 5 | 3 | 15 HIGH | HIGH | Phase 3 | Every public update/pre-submit | DEFERRED |
 
 ## 9. Risk details
@@ -244,7 +244,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-01` and `EXP-P3-07`
 - **Experiment type:** End-to-end product-truth experiment.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Threshold changes drive corresponding real output and never silently select the nearest preset.
 - **Failure criteria:** Generic output, preset substitution, ignored ear/frequency values or untraceable result.
 - **Fallback:** `NO SAFE FALLBACK — scope or approach must change before the stated deadline.`
@@ -298,7 +298,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-09`
 - **Experiment type:** Cross-channel coherence experiment.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Both interventions create internally consistent audible, visual and grounded-explanation changes.
 - **Failure criteria:** Any mandatory intervention is decorative, contradictory or not derived from the actual state.
 - **Fallback:** Temporarily hide a failing intervention while it is repaired; mandatory product acceptance remains blocked until both pass.
@@ -379,7 +379,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-02`
 - **Experiment type:** Objective transformation and structured-listening validation.
 - **Experiment owner:** Primary Codex task for evidence; human owner for residual `CRITICAL` risk.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Outputs are deterministic, input-correlated, meaningfully distinguishable and not reducible to gain changes alone.
 - **Failure criteria:** No stable input relationship, unexplained behavior or result that is only louder/quieter.
 - **Fallback:** `NO SAFE FALLBACK — scope or approach must change before the stated deadline.`
@@ -401,16 +401,16 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `12 — MEDIUM`
 - **Confidence in assessment:** `MEDIUM`
 - **How early it can be discovered:** Phase 4 — acceptance design.
-- **Latest safe discovery point:** Phase 9 walking-skeleton acceptance.
+- **Latest safe discovery point:** Phase 10 first-proof gate.
 - **Evidence needed:** Captured shared events and state/timing trace.
 - **Validation experiment:** `EXP-P3-06`
 - **Experiment type:** Temporal and semantic synchronization check.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Every state change has correct semantic order and stays within a threshold declared before execution.
 - **Failure criteria:** Any mismatched state, reversed order or threshold violation.
 - **Fallback:** Reduce the visual proof to a stable data-derived state representation and rerun validation; never show decorative unsynchronised animation.
-- **Decision deadline:** Before Phase 9 acceptance.
+- **Decision deadline:** Before Phase 10 first-proof gate.
 - **Current disposition:** `DEFERRED` — owner: primary Codex task; revisit on `EXP-P3-06`; deferral is valid only while synchronization is not claimed as validated.
 - **Residual risk:** Capture and playback latency can differ from the live environment.
 - **Dependencies or related risks:** `RISK-PROD-04`, `RISK-WEB-03`, `RISK-DEMO-03`.
@@ -428,16 +428,16 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `15 — HIGH`
 - **Confidence in assessment:** `MEDIUM`
 - **How early it can be discovered:** Phase 4 — acceptance design.
-- **Latest safe discovery point:** Phase 9 acceptance.
+- **Latest safe discovery point:** Phase 10 first-proof gate.
 - **Evidence needed:** Source identity, state trace and reproducible reference/transformed pair.
 - **Validation experiment:** `EXP-P3-01` and `EXP-P3-08`
 - **Experiment type:** Source-identity and comparative-output validation.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Reference and transformed states demonstrably originate from the same source except for an intentional intervention.
 - **Failure criteria:** Different source content or untraceable comparison.
 - **Fallback:** `NO SAFE FALLBACK — scope or approach must change before the stated deadline.`
-- **Decision deadline:** Before Phase 9 acceptance; otherwise the selected approach is blocked.
+- **Decision deadline:** Before Phase 10 first-proof gate; otherwise the selected approach is blocked.
 - **Current disposition:** `DEFERRED` — owner: primary Codex task; revisit on `EXP-P3-08`; deferral is valid only while no A/B proof is claimed.
 - **Residual risk:** Output routing or capture can later break source identity.
 - **Dependencies or related risks:** `RISK-CRED-02`, `RISK-CRED-05`, `RISK-DEMO-03`.
@@ -460,7 +460,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-08`
 - **Experiment type:** Comparative support-state experiment.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Both states are real, coherent and distinguishable through evidence beyond labels.
 - **Failure criteria:** Identical outputs, decorative state change or distinction explained only by overall loudness.
 - **Fallback:** `NO SAFE FALLBACK — scope or approach must change before the stated deadline.`
@@ -482,16 +482,16 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `16 — HIGH`
 - **Confidence in assessment:** `LOW`
 - **How early it can be discovered:** Phase 4 — fixture and listening-evidence design.
-- **Latest safe discovery point:** Phase 9 for core states and Phase 10 for all mandatory profiles.
+- **Latest safe discovery point:** Phase 10 first-proof gate for core states and Phase 10 acceptance for all mandatory profiles.
 - **Evidence needed:** Level-aware objective comparison plus structured internal listening.
 - **Validation experiment:** `EXP-P3-02` and `EXP-P3-08`
 - **Experiment type:** Objective and perceptual distinction experiment.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Mandatory states differ consistently for their actual inputs and remain distinguishable after controlling for simple level differences.
 - **Failure criteria:** Indistinguishable result or only an overall gain change.
 - **Fallback:** Simplify the effect while preserving the mandatory product state and rerun validation; directional support may be downgraded or removed if it is the failing optional state.
-- **Decision deadline:** Before Phase 9 acceptance for core states and Phase 10 for all mandatory profiles.
+- **Decision deadline:** Before Phase 10 first-proof gate for core states and Phase 10 acceptance for all mandatory profiles.
 - **Current disposition:** `DEFERRED` — owner: primary Codex task; revisit on `EXP-P3-02` and `EXP-P3-08`; deferral is valid only while unvalidated states are not `Functional`.
 - **Residual risk:** General-audience perception remains device- and listener-dependent.
 - **Dependencies or related risks:** `RISK-CRED-01`, `RISK-CRED-04`, `RISK-WEB-03`.
@@ -509,16 +509,16 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `15 — HIGH`
 - **Confidence in assessment:** `MEDIUM`
 - **How early it can be discovered:** Phase 3 — evidence-standard decision.
-- **Latest safe discovery point:** Before any user-facing audio in Phase 9.
+- **Latest safe discovery point:** Before first user-facing Phase 10 audio.
 - **Evidence needed:** Worst-case digital-output sweep, transition measurements, explicit low-volume start instruction and observed stop behavior.
 - **Validation experiment:** `EXP-P3-04`
 - **Experiment type:** Digital safety and transition sweep.
 - **Experiment owner:** Primary Codex task; human owner accepts any residual `HIGH` risk.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** No clipping or non-finite output, no excursion above the predeclared digital ceiling, explicit low-volume start and effective stop.
 - **Failure criteria:** Any uncontrolled level, clipping, non-finite sample, unsafe transition or ineffective stop.
 - **Fallback:** `NO SAFE FALLBACK — audio playback remains blocked until the failure is removed.`
-- **Decision deadline:** Before the first user-facing Phase 9 audio proof.
+- **Decision deadline:** Before first user-facing Phase 10 audio.
 - **Current disposition:** `DEFERRED` — owner: primary Codex task; revisit on `EXP-P3-04`; deferral is valid only while playback is not released.
 - **Residual risk:** Digital checks cannot validate the user’s physical volume, headphones, hearing sensitivity or exposure duration. No production-grade safety claim is permitted.
 - **Dependencies or related risks:** `RISK-WEB-02`, `RISK-WEB-03`, `RISK-DEMO-03`.
@@ -536,12 +536,12 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `16 — HIGH`
 - **Confidence in assessment:** `HIGH`
 - **How early it can be discovered:** Phase 5 — technology and platform decision.
-- **Latest safe discovery point:** Before Phase 5 approval, reconfirmed in Phase 9.
+- **Latest safe discovery point:** Before Phase 5 approval, reconfirmed by the Phase 9 shell smoke and Phase 10 product/runtime check.
 - **Evidence needed:** Observed primary/secondary desktop matrix and current-mobile smoke.
 - **Validation experiment:** `EXP-P3-05`
 - **Experiment type:** Browser/device compatibility matrix.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9 after a runnable path exists.
+- **Earliest valid execution phase:** Phase 9 for shell/static evidence after a runnable path exists; Phase 10 for product/runtime evidence.
 - **Pass criteria:** Every mandatory case passes in both claimed desktop environments; mobile claims remain limited to observed smoke evidence.
 - **Failure criteria:** Any claimed mandatory environment fails its core journey.
 - **Fallback:** Narrow the supported-environment claim to the observed passing matrix.
@@ -563,16 +563,16 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `16 — HIGH`
 - **Confidence in assessment:** `HIGH`
 - **How early it can be discovered:** Phase 5 — lifecycle design.
-- **Latest safe discovery point:** Phase 9 acceptance.
+- **Latest safe discovery point:** Before first user-facing Phase 10 audio.
 - **Evidence needed:** Observed start, pause, resume, interruption, focus and route-transition behavior.
 - **Validation experiment:** `EXP-P3-04` and `EXP-P3-05`
 - **Experiment type:** Lifecycle and interruption matrix.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Explicit user start succeeds; every tested interruption ends in a correct state or a clear recoverable prompt.
 - **Failure criteria:** Silent failure, uncontrolled playback or incorrect state after interruption.
 - **Fallback:** Require explicit user restart and present a clear recoverable state; never imply uninterrupted playback.
-- **Decision deadline:** Before Phase 9 acceptance.
+- **Decision deadline:** Before first user-facing Phase 10 audio.
 - **Current disposition:** `DEFERRED` — owner: primary Codex task; revisit on `EXP-P3-04` and `EXP-P3-05`; deferral is valid only before public playback.
 - **Residual risk:** OS-level interruptions remain outside application control.
 - **Dependencies or related risks:** `RISK-SAFE-01`, `RISK-WEB-03`, `RISK-DEMO-01`.
@@ -595,7 +595,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-04`, `EXP-P3-05` and `EXP-P3-08`
 - **Experiment type:** Output-chain and comparison matrix.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Mandatory comparisons remain safe at the digital boundary and understandable in every claimed environment.
 - **Failure criteria:** Any claimed environment defeats safety, source comparison or support distinction.
 - **Fallback:** Narrow support claims, instruct low-volume start and state the physical-chain limitation explicitly.
@@ -622,7 +622,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-05`
 - **Experiment type:** Device smoke and stability check.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** The explicitly claimed mobile smoke journey completes without material glitch, crash or false state.
 - **Failure criteria:** Broken mandatory smoke path or claimed parity unsupported by evidence.
 - **Fallback:** Limit mobile to the passing observed scope or make no mobile-support claim.
@@ -698,16 +698,16 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `20 — CRITICAL`
 - **Confidence in assessment:** `MEDIUM`
 - **How early it can be discovered:** Phase 5 — external-service decision.
-- **Latest safe discovery point:** Phase 9 acceptance, repeated pre-demo.
+- **Latest safe discovery point:** Phase 10 first-proof gate for initial live-path proof; Phase 10 acceptance for the full reliability threshold; repeat pre-demo validation.
 - **Evidence needed:** Twenty fresh integrated runs with timestamps, status and grounding observations.
 - **Validation experiment:** `EXP-P3-10`
 - **Experiment type:** Live-service reliability and latency experiment.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** At least 19/20 live successes, zero false-live states, zero dead ends and live-explanation p95 no greater than 10 seconds.
 - **Failure criteria:** Lower success, any false-live state, any dead end or latency threshold failure.
 - **Fallback:** Friendly transparent degraded state and retry/restart path. The fallback does not satisfy the mandatory live acceptance.
-- **Decision deadline:** Before Phase 9 acceptance and every final rehearsal.
+- **Decision deadline:** Initial live-path proof before the Phase 10 first-proof gate; full reliability acceptance before Phase 10 acceptance and every final rehearsal.
 - **Current disposition:** `DEFERRED` — owner: primary Codex task; revisit on `EXP-P3-10`; deferral is valid only while live reliability is not claimed.
 - **Residual risk:** External-service incidents can occur after a passing sample; any accepted `CRITICAL` residual risk requires the human owner.
 - **Dependencies or related risks:** `RISK-AI-02`, `RISK-AI-03`, `RISK-DEMO-01`.
@@ -730,7 +730,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-11`
 - **Experiment type:** Dependency-removal and continuity test.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10 after the mandatory critical chain passes and before optional-image exposure.
 - **Pass criteria:** Mandatory Family Experience completes with optional image/audio generation disabled.
 - **Failure criteria:** An optional service outage prevents mandatory completion.
 - **Fallback:** Remove the optional service and use validated reusable media; never call reused media freshly generated.
@@ -757,7 +757,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-10`
 - **Experiment type:** Live-state truthfulness audit.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Zero false-live states across twenty fresh runs and all failure states remain explicit.
 - **Failure criteria:** Any cached, fallback or reused result is described as freshly generated.
 - **Fallback:** Label prepared/reused output accurately and show a friendly failure state; the mandatory live requirement remains unpassed.
@@ -779,16 +779,16 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `20 — CRITICAL`
 - **Confidence in assessment:** `MEDIUM`
 - **How early it can be discovered:** Phase 4 — end-to-end acceptance design.
-- **Latest safe discovery point:** First Phase 9 walking skeleton and every pre-demo rehearsal.
+- **Latest safe discovery point:** Phase 10 first-proof gate and every pre-demo rehearsal.
 - **Evidence needed:** Integrated proof covering real input, transform, same-source A/B, support, safety, visual state, live GPT and outage truth.
 - **Validation experiment:** `EXP-P3-01` and `EXP-P3-11`
 - **Experiment type:** Critical-chain and dependency-kill tests.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Every mandatory chain link completes truthfully in one fresh run; optional media service removal does not break it.
 - **Failure criteria:** Any mandatory link is absent, fake, ungrounded or terminates the journey.
 - **Fallback:** Present an honest recoverable failure state and stop optional work. The fallback does not pass live-demo acceptance.
-- **Decision deadline:** First proof by July 18, 2026, 02:00 CEST; full acceptance before Phase 9 closes.
+- **Decision deadline:** First proof by July 18, 2026, 02:00 CEST; full acceptance before Phase 10 closes.
 - **Current disposition:** `DEFERRED` — owner: primary Codex task; revisit on `EXP-P3-01`; deferral is valid only before an integrated result is claimed.
 - **Residual risk:** Environmental service failure remains possible after rehearsals; any accepted `CRITICAL` residual risk requires the human owner.
 - **Dependencies or related risks:** `RISK-TIME-01`, `RISK-AI-01`, `RISK-WEB-02`.
@@ -832,7 +832,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Likelihood:** `4 — Likely`
 - **Exposure / priority:** `20 — CRITICAL`
 - **Confidence in assessment:** `HIGH`
-- **How early it can be discovered:** Phase 9 — first captured end-to-end audio.
+- **How early it can be discovered:** Phase 10 — first captured end-to-end audio.
 - **Latest safe discovery point:** Before final recording and upload.
 - **Evidence needed:** Public uploaded-stream listening on both desktop environments, current mobile, headphones and built-in output.
 - **Validation experiment:** `EXP-P3-08` and `EXP-P3-16`
@@ -865,7 +865,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-07` and `EXP-P3-12`
 - **Experiment type:** Data-flow and retention audit.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9 for observed evidence.
+- **Earliest valid execution phase:** Phase 10 for observed evidence.
 - **Pass criteria:** No raw profile/context persists beyond the session or enters logs.
 - **Failure criteria:** Any undisclosed retained, reused or publicly exposed raw data.
 - **Fallback:** Block public/manual-input testing until the session-only boundary is restored.
@@ -892,7 +892,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-12` and `EXP-P3-15`
 - **Experiment type:** Security-boundary and anonymous-route audit.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 9 for static secret and public-repository checks; Phase 10 for provider, route and representative-session checks.
 - **Pass criteria:** No secret or privileged credential is exposed; judges need no private key.
 - **Failure criteria:** Any credential disclosure or unsafe privileged route.
 - **Fallback:** Remove the exposed dependency/route and block publication until corrected.
@@ -1022,7 +1022,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `20 — CRITICAL`
 - **Confidence in assessment:** `HIGH`
 - **How early it can be discovered:** Phase 5 — asset-source decision.
-- **Latest safe discovery point:** Before Phase 9 audio proof and any video capture.
+- **Latest safe discovery point:** Before first user-facing Phase 10 audio and any video capture.
 - **Evidence needed:** Per-audio-asset source, author/tool, rights, consent, modification and attribution record.
 - **Validation experiment:** `EXP-P3-14`
 - **Experiment type:** Audio provenance audit.
@@ -1031,7 +1031,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Pass criteria:** Every used audio component has complete public-app and video rights evidence.
 - **Failure criteria:** Missing, incompatible or unverifiable rights for any used audio.
 - **Fallback:** Remove or replace the asset with documented media; no unaudited audio may remain.
-- **Decision deadline:** Before Phase 9 proof and before video capture.
+- **Decision deadline:** Before first user-facing Phase 10 audio and before video capture.
 - **Current disposition:** `DEFERRED` — owner: primary Codex task; revisit per asset through `EXP-P3-14`; deferral is valid while no unaudited audio is used publicly.
 - **Residual risk:** Generated-media terms and voice/publicity issues may require separate evidence; any accepted `CRITICAL` residual risk requires the human owner.
 - **Dependencies or related risks:** `RISK-IP-03`, `RISK-SCENE-01`, `RISK-DEMO-03`.
@@ -1081,7 +1081,7 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Validation experiment:** `EXP-P3-01` and `EXP-P3-18`
 - **Experiment type:** Early integration and schedule gate.
 - **Experiment owner:** Primary Codex task.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Critical chain executes by the approved deadline with real rather than placeholder results.
 - **Failure criteria:** Missing chain link or missed deadline.
 - **Fallback:** Stop optional/non-blocking work and change the approach before proceeding.
@@ -1157,16 +1157,16 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 - **Exposure / priority:** `16 — HIGH`
 - **Confidence in assessment:** `MEDIUM`
 - **How early it can be discovered:** Phase 4 — scene-proof acceptance design.
-- **Latest safe discovery point:** Phase 9 acceptance.
+- **Latest safe discovery point:** Phase 10 first-proof gate.
 - **Evidence needed:** Captured scene proof across required states and optional-media kill test.
 - **Validation experiment:** `EXP-P3-11` and `EXP-P3-16`
 - **Experiment type:** Scene continuity and public-listening validation.
 - **Experiment owner:** Primary Codex task; human owner for listener review.
-- **Earliest valid execution phase:** Phase 9.
+- **Earliest valid execution phase:** Phase 10.
 - **Pass criteria:** Validated media supports intelligible, coherent mandatory states without optional live media generation.
 - **Failure criteria:** Scene cannot support comparison/intervention proof or depends on an optional generation service.
 - **Fallback:** Simplify media production while preserving the required family-dinner scenario and validated state changes.
-- **Decision deadline:** Before Phase 9 acceptance; otherwise simplify immediately.
+- **Decision deadline:** Before Phase 10 first-proof gate; otherwise simplify immediately.
 - **Current disposition:** `DEFERRED` — owner: primary Codex task; revisit on `EXP-P3-11`; deferral is valid only while media quality is not claimed as complete.
 - **Residual risk:** Simplification may reduce emotional impact while preserving product truth.
 - **Dependencies or related risks:** `RISK-AI-02`, `RISK-IP-02`, `RISK-DEMO-03`.
@@ -1205,18 +1205,18 @@ These risks must directly shape Phase 4 acceptance design. This statement does n
 
 | Experiment ID | Related risks | Hypothesis | Earliest phase | Evidence | Pass | Fail | Decision after result | Owner | Deadline |
 |---|---|---|---|---|---|---|---|---|---|
-| EXP-P3-01 | PROD-02, CRED-01–05, SAFE-01, AI-01, AI-03, DEMO-01, TIME-01 | The entire critical chain can produce one genuine integrated result. | Phase 9 | Controlled scene; preset and manual input; support transition; intervention; audio, visual, live GPT and outage trace. | Every link is real, same-source, safe, grounded and truthfully labelled. | Any missing, fake, unsafe, ungrounded or dead-end link. | Continue core work only after pass; otherwise stop optional work and change approach. | Primary Codex task | 18 Jul 2026, 02:00 CEST |
-| EXP-P3-02 | CRED-01, CRED-05 | Mandatory results are deterministic, input-correlated and distinguishable beyond gain. | Phase 9 | Fixed profiles, objective output comparisons and structured internal listening. | Stable input relationship; meaningful distinctions; limitations recorded. | Unstable relationship, indistinguishable output or only level change. | Permit demo-level `Functional` consideration or change approach. | Primary Codex task; owner accepts residual CRITICAL risk | Before relevant `Functional` state |
+| EXP-P3-01 | PROD-02, CRED-01–05, SAFE-01, AI-01, AI-03, DEMO-01, TIME-01 | The entire critical chain can produce one genuine integrated result. | Phase 10 first-proof gate | Controlled scene; preset and manual input; support transition; intervention; audio, visual, live GPT and outage trace. | Every link is real, same-source, safe, grounded and truthfully labelled. | Any missing, fake, unsafe, ungrounded or dead-end link. | Continue core work only after pass; otherwise stop optional work and change approach. | Primary Codex task | 18 Jul 2026, 02:00 CEST |
+| EXP-P3-02 | CRED-01, CRED-05 | Mandatory results are deterministic, input-correlated and distinguishable beyond gain. | Phase 10 first-proof gate | Fixed profiles, objective output comparisons and structured internal listening. | Stable input relationship; meaningful distinctions; limitations recorded. | Unstable relationship, indistinguishable output or only level change. | Permit demo-level `Functional` consideration or change approach. | Primary Codex task; owner accepts residual CRITICAL risk | Before relevant `Functional` state |
 | EXP-P3-03 | CLAIM-01–02, UX-01, DOC-01 | Independent users understand the educational boundary and practical outcome. | Phase 10 | Full claim inventory and structured review by owner plus ≥3 independent people. | All understand illustrative/non-diagnostic boundary and an action. | Any unresolved diagnostic, exactness or prescriptive interpretation. | Owner returns GO/NO-GO; revise and rerun after NO-GO. | Human owner | Before video/public-claim lock |
-| EXP-P3-04 | SAFE-01, WEB-02–03 | Worst-case digital playback and transitions remain controlled. | Phase 9 | Worst-case assets; start, switch, resume and stop sweep with observed output. | Zero clipping/non-finite output/ceiling overshoot; low-volume instruction; effective stop. | Any uncontrolled level, invalid output or failed stop. | Block public playback until corrected. | Primary Codex task | Before first user-facing audio |
-| EXP-P3-05 | WEB-01–03, PERF-01 | Mandatory journey works in the claimed environment matrix. | Phase 9 | Full primary/secondary desktop runs and current-mobile smoke. | 100% mandatory claimed cases pass. | Any claimed mandatory case fails. | Narrow support claims or correct and rerun. | Primary Codex task | Before Phase 10 |
-| EXP-P3-06 | CRED-02 | Audible and visual states remain semantically and temporally aligned. | Phase 9 | Captured shared-state events and timing trace. | Correct order and predeclared threshold on every tested transition. | Any mismatch, wrong order or threshold breach. | Simplify visual representation or correct synchronization. | Primary Codex task | Before Phase 9 acceptance |
-| EXP-P3-07 | PROD-02, CLAIM-02, CRED-05, SEC-01 | Manual thresholds drive real output without hidden preset substitution or retention. | Phase 9 | Two distinct manual profiles plus preset; input/output and session-retention trace. | Corresponding real change, no nearest-preset substitution, no raw persistence. | Ignored input, generic output, substitution or retained raw data. | Block manual path and change approach. | Primary Codex task | 18 Jul proof; final by 20 Jul |
-| EXP-P3-08 | CRED-03–05, DEMO-03 | Same-source A/B and one-sided/bilateral differences are genuine and audible. | Phase 9 | Source identity, objective comparisons and structured listening across required states. | Exact source relationship and meaningful distinction beyond gain. | Different source, decorative state or indistinguishable result. | Change approach; do not claim mandatory proof. | Primary Codex task | Before Phase 9/10 acceptance |
-| EXP-P3-09 | PROD-04 | Both interventions change audio, visual state and explanation coherently. | Phase 9 | TV-off and speaker-position before/after traces. | Both interventions pass all three channels. | Any decorative or contradictory channel. | Repair before mandatory acceptance. | Primary Codex task | Before Phase 10; ≤20 Jul |
-| EXP-P3-10 | AI-01, AI-03, DEMO-01 | Live GPT path is reliable, grounded and truthfully represented. | Phase 9 | Twenty fresh runs across supported desktop evidence, plus mobile smoke. | ≥19 live successes, 0 false-live, 0 dead ends, explanation p95 ≤10s. | Any threshold failure. | Use honest degraded state; live acceptance remains blocked. | Primary Codex task | Before Phase 10 and pre-demo |
-| EXP-P3-11 | AI-02, DEMO-01, SCENE-01 | Optional media generation can be removed without breaking the core. | Phase 9 | Disable all optional live image/audio generation and execute the mandatory journey. | Core completes with validated media and live GPT intelligence. | Any mandatory step depends on disabled optional generation. | Remove or redesign the optional dependency. | Primary Codex task | Before optional capability exposure |
-| EXP-P3-12 | SEC-01–02 | Session data and service credentials remain outside persistence, logs and public artifacts. | Phase 9 | Representative session plus persistence, log, network and public-client inspection. | No raw profile/context retention and no secret/client privileged key. | Any raw-data or secret exposure. | Block public testing/deployment. | Primary Codex task | Before public testing/deployment |
+| EXP-P3-04 | SAFE-01, WEB-02–03 | Worst-case digital playback and transitions remain controlled. | Before first user-facing Phase 10 audio | Worst-case assets; start, switch, resume and stop sweep with observed output. | Zero clipping/non-finite output/ceiling overshoot; low-volume instruction; effective stop. | Any uncontrolled level, invalid output or failed stop. | Block public playback until corrected. | Primary Codex task | Before first user-facing Phase 10 audio |
+| EXP-P3-05 | WEB-01–03, PERF-01 | Mandatory journey works in the claimed environment matrix. | Phase 9 shell smoke; Phase 10 product/runtime check | Full primary/secondary desktop runs and current-mobile smoke. | 100% mandatory claimed cases pass. | Any claimed mandatory case fails. | Narrow support claims or correct and rerun. | Primary Codex task | Before Phase 10 acceptance |
+| EXP-P3-06 | CRED-02 | Audible and visual states remain semantically and temporally aligned. | Phase 10 first-proof gate | Captured shared-state events and timing trace. | Correct order and predeclared threshold on every tested transition. | Any mismatch, wrong order or threshold breach. | Simplify visual representation or correct synchronization. | Primary Codex task | Before Phase 10 first-proof gate |
+| EXP-P3-07 | PROD-02, CLAIM-02, CRED-05, SEC-01 | Manual thresholds drive real output without hidden preset substitution or retention. | Phase 10 first-proof gate | Two distinct manual profiles plus preset; input/output and session-retention trace. | Corresponding real change, no nearest-preset substitution, no raw persistence. | Ignored input, generic output, substitution or retained raw data. | Block manual path and change approach. | Primary Codex task | 18 Jul proof; final by 20 Jul |
+| EXP-P3-08 | CRED-03–05, DEMO-03 | Same-source A/B and one-sided/bilateral differences are genuine and audible. | Phase 10 first-proof gate; repeat for Phase 10 acceptance | Source identity, objective comparisons and structured listening across required states. | Exact source relationship and meaningful distinction beyond gain. | Different source, decorative state or indistinguishable result. | Change approach; do not claim mandatory proof. | Primary Codex task | Before Phase 10 first-proof gate and Phase 10 acceptance as applicable |
+| EXP-P3-09 | PROD-04 | Both interventions change audio, visual state and explanation coherently. | Phase 10 first-proof gate for slice; Phase 10 acceptance for both interventions | TV-off and speaker-position before/after traces. | Both interventions pass all three channels. | Any decorative or contradictory channel. | Repair before mandatory acceptance. | Primary Codex task | Before Phase 10 acceptance; ≤20 Jul |
+| EXP-P3-10 | AI-01, AI-03, DEMO-01 | Live GPT path is reliable, grounded and truthfully represented. | Phase 10 acceptance and pre-demo validation | Twenty fresh runs across supported desktop evidence, plus mobile smoke. | ≥19 live successes, 0 false-live, 0 dead ends, explanation p95 ≤10s. | Any threshold failure. | Use honest degraded state; live acceptance remains blocked. | Primary Codex task | Before Phase 10 acceptance and pre-demo validation |
+| EXP-P3-11 | AI-02, DEMO-01, SCENE-01 | Optional media generation can be removed without breaking the core. | Phase 10 after mandatory critical chain; before optional-image exposure | Disable all optional live image/audio generation and execute the mandatory journey. | Core completes with validated media and live GPT intelligence. | Any mandatory step depends on disabled optional generation. | Remove or redesign the optional dependency. | Primary Codex task | Before optional-image exposure |
+| EXP-P3-12 | SEC-01–02 | Session data and service credentials remain outside persistence, logs and public artifacts. | Phase 9 static secret/public-repository checks; Phase 10 runtime/session check | Representative session plus persistence, log, network and public-client inspection. | No raw profile/context retention and no secret/client privileged key. | Any raw-data or secret exposure. | Block public testing/deployment. | Primary Codex task | Before public testing/deployment |
 | EXP-P3-13 | UX-02 | Mandatory states remain reachable and understandable with accessibility alternatives. | Phase 10 | Keyboard, text status, captions/transcript, reduced motion and non-audio cues. | All mandatory states pass. | Any mandatory inaccessible state. | Add/simplify alternatives and rerun. | Primary Codex task | Before Phase 10 acceptance |
 | EXP-P3-14 | IP-01–03 | Every public asset has complete applicable provenance and rights evidence. | Asset selection | Per-asset origin, author/tool, terms/version, modification, consent and attribution. | 100% of used assets pass. | Any missing or incompatible evidence. | Remove or replace the asset. | Primary Codex task; owner resolves ambiguity | Before each asset is public |
 | EXP-P3-15 | DEMO-02, SEC-02 | A clean judge can reach the product without developer credentials. | Phase 10 | Three cold anonymous runs per claimed environment. | Main journey reachable, no judge key and no secret exposure. | Any access dead end or credential requirement. | Correct or use another approved compliant route. | Primary Codex task | Before submission; maintain through judging |
@@ -1250,7 +1250,7 @@ The system-design decision must not proceed with an unresolved assumption that:
 
 Exact architecture and technology remain `OUT OF PHASE — revisit in Phase 5`.
 
-### Phase 9 acceptance
+### Phase 10 first-proof gate
 
 At minimum, execute the applicable portions of:
 
@@ -1277,7 +1277,7 @@ Complete and pass:
 - final environment evidence from `EXP-P3-05`
 - `EXP-P3-13`
 - applicable public-route evidence from `EXP-P3-15`
-- all mandatory unresolved Phase 9 experiments.
+- all mandatory unresolved Phase 10 first-proof experiments.
 
 No new capability may begin after July 20, 2026, 02:00 CEST.
 
@@ -1300,11 +1300,11 @@ Capability hardening freeze is July 21, 2026, 02:00 CEST. Submission deadline is
 | Complete, truthful Family Experience | PROD-01, PROD-03, DEMO-01, TIME-02–03 | Integrated journey plus surface/status audit | Phase 10 and cutoff |
 | Three synthetic profiles | CRED-01, CRED-05, CLAIM-02 | Deterministic fixtures and structured listening | Phase 10 |
 | Real manual audiogram path | PROD-02, CRED-01, CRED-05, SEC-01 | Input/output trace for distinct profiles | First proof and Phase 10 |
-| Honest same-source A/B | CRED-02–03, DEMO-03 | Source identity, sync and public listening | Phase 9/video lock |
+| Honest same-source A/B | CRED-02–03, DEMO-03 | Source identity, sync and public listening | Phase 10 first-proof gate/video lock |
 | One-sided and bilateral support | CRED-04–05, WEB-03 | Objective and listening distinction | Phase 10 |
 | Two functional interventions | PROD-04, CRED-02, UX-01 | Coherent audio/visual/explanation evidence | Phase 10 |
 | Data-derived visual proof | CRED-02, UX-02 | Shared-state trace and accessible alternative | Phase 10 |
-| Live GPT intent/structure/explanation | AI-01, AI-03, DEMO-01 | Twenty fresh grounded runs | Phase 9/10 |
+| Live GPT intent/structure/explanation | AI-01, AI-03, DEMO-01 | Twenty fresh grounded runs | Phase 10 acceptance and pre-demo validation |
 | Optional live media generation | AI-02, SCENE-01, DOC-01 | Kill test and truthful state labelling | Before exposure |
 | Digital audio safety | SAFE-01, WEB-02–03 | Worst-case output and transition sweep | Before user audio |
 | Supported browser/device environment | WEB-01–03, PERF-01, DEMO-02 | Observed environment matrix | Phase 10 |

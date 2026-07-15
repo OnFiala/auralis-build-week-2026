@@ -151,7 +151,7 @@ The mandatory first-proof matrix is:
 - current stable Safari on the same macOS version;
 - the same recorded wired stereo output chain.
 
-Actual version numbers and output hardware must be recorded during Phase 9. No broader support claim follows from this design.
+Actual runtime and package versions must be recorded during Phase 9; output hardware must be recorded during Phase 10 product/runtime validation. No broader support claim follows from this design.
 
 ## 10. Logical responsibilities
 
@@ -292,7 +292,7 @@ The global semantic revision remains audit evidence; it is not by itself an inva
 
 The provisional manual range is `0–100 dB HL` in 5 dB increments. It is an illustrative input boundary, not a clinical range or safe-listening recommendation.
 
-The grid, range and exact three fixtures must be frozen before Phase 9. Changing them after seeing experiment results requires a recorded decision.
+The grid, range and exact three fixtures must be frozen before Phase 10 implementation begins. Changing them after seeing experiment results requires a recorded decision.
 
 A transformation plan is derived from the confirmed normalized values. The plan is never the canonical profile, and manual input is never replaced with a preset.
 
@@ -374,7 +374,7 @@ The contract requires:
 | `objectiveEvidenceRef` | Session evidence event/reference |
 | `renderedBufferRef` | Session-memory-only buffer reference |
 
-Exact filter coefficients and objective pass thresholds are not chosen here. They must be declared before the corresponding Phase 9 experiment.
+Exact filter coefficients and objective pass thresholds are not chosen here. They must be declared before the corresponding Phase 10 experiment.
 
 ## 18. Support and intervention state contract
 
@@ -403,7 +403,7 @@ Rules:
 5. The provisional rendered sample-peak ceiling is `-6 dBFS`.
 6. No transformed/support result may exceed the reference result's integrated level merely to improve apparent effectiveness.
 7. State switches use a provisional 50 ms bounded fade-out/fade-in.
-8. Stop or mute ramps to silence within at most 20 ms and terminates the source; Phase 9 must observe audible cessation within 100 ms.
+8. Stop or mute ramps to silence within at most 20 ms and terminates the source; validation before first user-facing Phase 10 audio must observe audible cessation within 100 ms.
 9. Stop/mute has priority over rendering, state transitions and model requests.
 10. A `suspended` or `interrupted` context immediately latches application mute and either terminates the active source or holds output at silence while updating semantic state.
 11. A browser transition back to `running` does not clear the application mute latch; only a new explicit user action may unlock and restart or resume playback.
@@ -531,7 +531,7 @@ Server validation occurs in this order:
 
 The browser revalidates the network response and applies it only if its run, purpose, attempt, purpose-specific grounding revision and every relevant grounding reference remain current.
 
-Schema success is not semantic truth. Grounding and claim checks remain separate, and Phase 9/10 human evidence remains required.
+Schema success is not semantic truth. Grounding and claim checks remain separate, and Phase 10 human evidence and pre-demo validation remain required.
 
 ## 23. Degraded-state and retry behavior
 
@@ -683,7 +683,7 @@ Required test seams include:
 
 Playwright WebKit cannot satisfy actual Safari acceptance.
 
-No test or experiment is executed by this design. Required execution remains in Phase 9 or 10.
+No test or experiment is executed by this design. Required Phase 9 shell/static checks and Phase 10 product/runtime tests or experiments remain unexecuted.
 
 ## 28. Deployment, judge access and rollback
 
@@ -814,7 +814,7 @@ The current design rejects:
 The following are explicit and do not count as validated:
 
 1. `[250, 500, 1000, 2000, 4000, 8000] Hz`, `0–100 dB HL`, 5 dB steps are provisional input constants.
-2. The exact three predefined fixtures remain to be frozen before Phase 9.
+2. The exact three predefined fixtures remain to be frozen before Phase 10 implementation begins.
 3. Exact profile-to-transform coefficients and objective thresholds remain to be declared before experiment execution.
 4. Standard Web Audio nodes are preferred, but AudioWorklet remains available behind the renderer contract.
 5. The `-6 dBFS`, 50 ms, 20 ms and 100 ms safety limits are provisional until EXP-P3-04.
