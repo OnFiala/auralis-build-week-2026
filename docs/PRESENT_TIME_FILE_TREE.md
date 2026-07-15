@@ -36,12 +36,10 @@ Phase 9 establishes only an executable, deployable application shell. Phase 10 a
 ├── next-env.d.ts [P9]
 ├── playwright.config.ts [P9]
 ├── dependency-cruiser.cjs [P9]
-├── vitest.config.ts [P10]
 ├── .env.example [P10]
 ├── public/
 │   └── media/family-dinner/
 │       ├── manifest.json [P10]
-│       ├── provenance.json [P10]
 │       ├── focused-speech.wav [P10]
 │       ├── overlapping-speech.wav [P10]
 │       ├── television.wav [P10]
@@ -51,7 +49,6 @@ Phase 9 establishes only an executable, deployable application shell. Phase 10 a
 │   │   ├── layout.tsx [P9]
 │   │   ├── page.tsx [P9]
 │   │   ├── globals.css [P9]
-│   │   ├── experience.tsx [P9]
 │   │   └── api/
 │   │       ├── health/route.ts [P9]
 │   │       ├── model/route.ts [P10]
@@ -85,15 +82,13 @@ Phase 9 establishes only an executable, deployable application shell. Phase 10 a
 | `tsconfig.json`, `next-env.d.ts` | Enforce strict TypeScript and provide the generated Next.js type surface. | Application composition | P9 |
 | `playwright.config.ts` | Configure the deployed browser smoke in P9 and the complete journey in P10. | Browser validation | P9 |
 | `dependency-cruiser.cjs` | Reject cycles, forbidden runtime crossings and unapproved package imports. | Dependency enforcement | P9 |
-| `vitest.config.ts` | Configure the deterministic-core and server-contract tests introduced with product logic. | Deterministic and server validation | P10 |
 | `.env.example` | Document only the empty server variable name required by the OpenAI adapter. | Server secret boundary | P10 |
-| `public/media/family-dinner/manifest.json`, `provenance.json` | Define validated source identity, alignment, digests, roles and public-use evidence. | Source and Transformation Domain | P10 |
+| `public/media/family-dinner/manifest.json` | Define one unambiguous record per asset covering provenance, rights, licence, modifications, digests, roles, alignment and validated source identity. | Source and Transformation Domain | P10 |
 | `public/media/family-dinner/*.wav` | Supply the four approved synchronized scene contributions. | Browser Audio Adapter input | P10 |
-| `src/app/layout.tsx`, `page.tsx`, `globals.css` | Provide the smallest reachable browser route, document shell and global styling. | Browser Application and UI Shell | P9 |
-| `src/app/experience.tsx` | Start as the minimal client composition and presentation surface, then wire the approved slice without owning domain rules. | Browser Application and UI Shell | P9 |
+| `src/app/layout.tsx`, `page.tsx`, `globals.css` | Provide the reachable route and styling, with `page.tsx` as the sole small P9 client composition and presentation surface and no domain, transformation, safety, Web Audio or model logic. | Browser Application and UI Shell | P9 |
 | `src/app/api/health/route.ts` | Expose a minimal trusted-server health/status response without product or provider logic. | Trusted Route and Telemetry Composition | P9 |
 | `src/app/api/model/route.ts` | Validate and compose the bounded text operations and internal allowlisted operational telemetry. | Trusted Route and Telemetry Composition | P10 |
-| `src/app/api/image/route.ts` | Compose the optional current-run image call without entering the mandatory path. | Trusted Route and OpenAI Provider Adapter | P10 |
+| `src/app/api/image/route.ts` | Compose the optional current-run image call only after the mandatory critical chain passes; omit and do not expose it if time is insufficient. | Trusted Route and OpenAI Provider Adapter | P10 |
 | `src/contracts/runtime.ts` | Own bounded transport schemas, grounding values, stable enums and error codes. | Cross-runtime Contracts | P10 |
 | `src/core/profile.ts` | Own profile fixtures, manual values, validation, normalization and confirmation. | Hearing Profile Domain | P10 |
 | `src/core/experience.ts` | Own canonical state, reducer, freshness checks and visible/evidence projections. | Experience State and Projections | P10 |
@@ -111,13 +106,13 @@ Phase 9 establishes only an executable, deployable application shell. Phase 10 a
 
 ## 6. Phase 9 creation set
 
-Phase 9 creates only the buildable application shell, one client composition root, one trusted-server health boundary, dependency enforcement and a deployed browser smoke test.
+Phase 9 creates only the buildable application shell, `src/app/page.tsx` as its one client composition root, one trusted-server health boundary, dependency enforcement and a deployed browser smoke test.
 
 It does not implement hearing profiles, canonical experience state, audio transformation, audio safety, Web Audio, OpenAI calls, evidence export, validated media or the approved vertical slice.
 
 No `[P10]` file or empty directory is created during Phase 9.
 
-Phase 9 installs and declares only dependencies required by the walking skeleton. Product dependencies first needed in Phase 10 — including Zod, the OpenAI SDK, Vitest, Testing Library and any model-specific or product-specific package — are neither installed nor added to `package.json` or `package-lock.json` during Phase 9; they are added only in Phase 10 after immediate version and compatibility reverification.
+Phase 9 installs and declares only dependencies required by the walking skeleton. Product dependencies first needed in Phase 10 — including Zod, the OpenAI SDK, Vitest and any model-specific or product-specific package — are neither installed nor added to `package.json` or `package-lock.json` during Phase 9; they are added only in Phase 10 after immediate version and compatibility reverification. Testing Library and any DOM peer are not initial Phase 10 dependencies and may be added only when a concrete interactive component has important behavior that cannot be proved efficiently by a pure test or Playwright.
 
 `next-env.d.ts` is generated by the Next.js tooling and must not be manually authored.
 
@@ -125,9 +120,13 @@ Phase 9 installs and declares only dependencies required by the walking skeleton
 
 Phase 10 adds the actual product contracts, deterministic core, audio and model adapters, validated media, evidence and the complete vertical-slice journey.
 
-The optional image route remains outside mandatory completion. Operational telemetry remains an internal allowlisted responsibility of the trusted model route and does not receive a separate endpoint.
+The family-dinner manifest contains one unambiguous record per asset covering provenance, rights, licence, modifications, digests, roles and alignment.
 
-`src/app/experience.tsx` remains the single small presentation and client-composition surface unless real implementation pressure justifies a later approved split.
+Vitest initially uses a package script and its default configuration. A separate configuration file may be added only when immediate Phase 10 verification proves a concrete need such as aliases, an environment or another non-default setting.
+
+The optional image route remains outside mandatory completion and is created only after the mandatory critical chain passes. If time is insufficient, it remains absent and unexposed. Operational telemetry remains an internal allowlisted responsibility of the trusted model route and does not receive a separate endpoint.
+
+`src/app/page.tsx` remains the single small presentation and client-composition surface unless concrete implementation pressure justifies a later approved split. It must not own domain, transformation, safety, Web Audio or model logic.
 
 ## 8. Explicitly absent structure
 
@@ -137,8 +136,10 @@ The optional image route remains outside mandatory completion. Operational telem
 - No generic `shared`, `services`, `utils`, `helpers`, `common` or `misc` directory.
 - No second backend, worker, queue, event bus or microservice.
 - No media-generation subsystem or stored generated-media library.
+- No separate media-provenance file; the family-dinner manifest owns the per-asset evidence.
 - No standalone telemetry endpoint or telemetry subsystem.
 - No separate `src/ui/` component hierarchy.
+- No separate Vitest configuration without a verified non-default Phase 10 requirement.
 - No plugin architecture, factories or extension registry.
 - No monorepo, packages workspace or separate API project.
 - No feature folders for future experiences.
@@ -156,7 +157,7 @@ The optional image route remains outside mandatory completion. Operational telem
 | Experience State and Projections | `src/core/experience.ts` in P10; sole semantic reducer and projection owner. |
 | Source and Transformation Domain | `src/core/transformation.ts` plus validated manifest inputs in P10. |
 | Audio Safety Policy | `src/core/safety.ts` in P10; adapters enforce but never redefine it. |
-| Browser Application and UI Shell | P9 shell and `src/app/experience.tsx`, extended in P10 without domain logic. |
+| Browser Application and UI Shell | P9 shell with `src/app/page.tsx` as the sole small composition and presentation surface, extended in P10 without domain logic. |
 | Browser Audio Adapter | `src/browser/audio.ts` in P10; the only direct Web Audio boundary. |
 | Browser Model Client | `src/browser/model-client.ts` in P10; same-origin HTTP only. |
 | Browser Evidence Adapter | `src/browser/evidence.ts` in P10; sanitized projections only. |
@@ -168,14 +169,14 @@ Static direction remains composition → adapters → pure modules/contracts. Th
 
 ## 10. Phase 8 handoff
 
-Phase 8 may remove or merge a proposed path when the same boundary and required evidence remain clear. It must challenge every P10 path and preserve the intentionally thin P9 shell.
+The owner-approved Phase 8 adversarial review removes three speculative paths, defers the optional image route until after the mandatory critical chain and preserves every approved boundary and required evidence mechanism.
 
-Phase 8 must not add product scope, create files, choose future abstractions or begin the walking skeleton.
+It adds no product scope, dependency, architecture, implementation or future abstraction and does not begin the walking skeleton.
 
 ## 11. Phase status
 
-This document is the approved and published Phase 7 present-time file-tree definition. No listed application, configuration, test or media path has been created.
+This document is the approved Phase 7 present-time file-tree definition as simplified by the owner-approved Phase 8 adversarial review. No listed application, configuration, test or media path has been created.
 
-Phase 7 is complete. The approved tree contains 12 Phase 9 files and 23 Phase 10 files.
+The simplified tree contains 11 Phase 9 files and 21 Phase 10 files, 32 files in total.
 
-Phase 8 has not been started.
+Phase 9 has not been started.
