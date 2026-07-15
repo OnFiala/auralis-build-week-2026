@@ -174,8 +174,8 @@ Phase 8 must not add product scope, create files, choose future abstractions or 
 
 ## 11. Phase status
 
-This revised document is the Phase 7 file-tree proposal. No listed application, configuration, test or media path has been created.
+This document is the approved and published Phase 7 present-time file-tree definition. No listed application, configuration, test or media path has been created.
 
-Phase 7 completion requires owner approval, publication and verification under `AGENTS.md`.
+Phase 7 is complete. The approved tree contains 12 Phase 9 files and 23 Phase 10 files.
 
 Phase 8 has not been started.
