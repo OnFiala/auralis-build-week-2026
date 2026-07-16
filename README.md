@@ -4,7 +4,7 @@
 
 Auralis is a project for OpenAI Build Week 2026.
 
-An executable walking skeleton now exists. It proves the application shell, trusted health boundary, build and local smoke path. The Auralis product experience is not implemented, Phase 10 has not started, and Phase 9 remains in progress until public deployment validation passes.
+A Phase 9 executable walking skeleton is publicly deployed. It proves the application shell, trusted health boundary, build, dependency enforcement and local, preview and production smoke paths. The Auralis hearing experience is not implemented and remains Phase 10 scope.
 
 ## Local shell
 
@@ -24,6 +24,10 @@ npm run check
 ```
 
 The check runs TypeScript validation, dependency-boundary enforcement, a production build and the local Playwright smoke test. The individual commands are `npm run typecheck`, `npm run check:deps`, `npm run build` and `npm run test:smoke`.
+
+## Public deployment
+
+Canonical production URL: [https://auralis-build-week-2026.vercel.app](https://auralis-build-week-2026.vercel.app)
 
 ## Documentation
 

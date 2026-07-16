@@ -2,7 +2,7 @@
 
 ## 1. Title and status
 
-**Status:** Approved Phase 7 present-time file tree; implementation has not started  
+**Status:** Approved Phase 7 present-time file tree; Phase 9 complete  
 **Proposal date:** July 15, 2026  
 **Scope:** Phase 9 executable walking skeleton and Phase 10 approved Family slice only
 
@@ -177,10 +177,14 @@ It adds no product scope, dependency, architecture, implementation or future abs
 
 This document is the approved Phase 7 present-time file-tree definition as simplified by the owner-approved Phase 8 adversarial review.
 
-All 11 listed Phase 9 files have been created on the Phase 9 working branch and have passed the required local walking-skeleton validation. The Playwright smoke test and the complete `npm run check` were executed by the human owner in an external macOS Terminal because the Codex host cannot launch Chromium due to a host-level Mach-port permission denial. The test and browser rules were not weakened.
+All 11 listed Phase 9 files have been created and published. All 21 listed Phase 10 files remain uncreated.
 
-All 21 listed Phase 10 files remain uncreated.
+Production deployment `dpl_BWWRJ5bHU1rtVRpFcRih1hzRKBtp` serves application commit `01bbe71c3cc787c7592b62eab6c4800a0092d6c3` at [https://auralis-build-week-2026.vercel.app](https://auralis-build-week-2026.vercel.app).
 
-Phase 9 remains in progress until the public preview and production deployment smoke gates pass.
+Local smoke, accepted preview smoke for deployment `dpl_Gd9EqDmkg9Qy49wupkUms95KrkMW`, and production smoke passed. The browser smoke evidence was executed by the human owner in an external macOS Terminal because the Codex host cannot launch Chromium due to a host-level MachPort permission denial. This is a validation-host limitation, not a product failure, and no test or browser rule was weakened.
+
+Deployment `dpl_AcfcSkLADG9uF4UB7SwVRJkRdPFm` remains classified as `ACCIDENTAL OUT-OF-GATE DEPLOYMENT — RETAINED, PROTECTED, NOT ACCEPTED AS PHASE 9 EVIDENCE`.
+
+Phase 9 is complete.
 
 Phase 10 has not been started.
