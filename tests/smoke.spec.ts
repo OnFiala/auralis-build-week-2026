@@ -1,7 +1,22 @@
 import { expect, test } from "@playwright/test";
 
-test("public walking skeleton reaches its trusted health boundary", async ({ page, request }) => {
-  const navigation = await page.goto("/");
+test("public walking skeleton reaches its trusted health boundary", async ({ page }) => {
+  const configuredUrl = process.env.PLAYWRIGHT_BASE_URL;
+  let authenticatedOrigin: string | undefined;
+
+  if (configuredUrl) {
+    const parsed = new URL(configuredUrl);
+
+    if (parsed.searchParams.has("_vercel_share")) {
+      await page.goto(parsed.toString(), { waitUntil: "domcontentloaded" });
+      authenticatedOrigin = new URL(page.url()).origin;
+    }
+  }
+
+  const pageUrl = authenticatedOrigin
+    ? new URL("/", authenticatedOrigin).toString()
+    : "/";
+  const navigation = await page.goto(pageUrl);
 
   expect(navigation?.status()).toBe(200);
   expect(navigation?.headers()["www-authenticate"]).toBeUndefined();
@@ -12,7 +27,10 @@ test("public walking skeleton reaches its trusted health boundary", async ({ pag
   await page.getByRole("button", { name: "Check system status" }).click();
   await expect(page.getByRole("status")).toHaveText("System status: ready.");
 
-  const health = await request.get("/api/health");
+  const healthUrl = authenticatedOrigin
+    ? new URL("/api/health", authenticatedOrigin).toString()
+    : "/api/health";
+  const health = await page.context().request.get(healthUrl);
   expect(health.status()).toBe(200);
   expect(health.headers()["www-authenticate"]).toBeUndefined();
   expect(health.headers()["cache-control"]).toContain("no-store");
