@@ -16,3 +16,10 @@ id_ed25519
 *.tmp
 *.temp
 *~
+
+node_modules/
+.next/
+*.tsbuildinfo
+.vercel/
+playwright-report/
+test-results/

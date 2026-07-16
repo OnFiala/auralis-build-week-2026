@@ -175,8 +175,12 @@ It adds no product scope, dependency, architecture, implementation or future abs
 
 ## 11. Phase status
 
-This document is the approved Phase 7 present-time file-tree definition as simplified by the owner-approved Phase 8 adversarial review. No listed application, configuration, test or media path has been created.
+This document is the approved Phase 7 present-time file-tree definition as simplified by the owner-approved Phase 8 adversarial review.
 
-The simplified tree contains 11 Phase 9 files and 21 Phase 10 files, 32 files in total.
+All 11 listed Phase 9 files have been created on the Phase 9 working branch and have passed the required local walking-skeleton validation. The Playwright smoke test and the complete `npm run check` were executed by the human owner in an external macOS Terminal because the Codex host cannot launch Chromium due to a host-level Mach-port permission denial. The test and browser rules were not weakened.
 
-Phase 9 has not been started.
+All 21 listed Phase 10 files remain uncreated.
+
+Phase 9 remains in progress until the public preview and production deployment smoke gates pass.
+
+Phase 10 has not been started.
