@@ -1,8 +1,10 @@
 import {
   assertValidComparisonPlan,
+  referenceResultForIntervention,
   resultForSupportMode,
   type ComparisonMode,
   type ComparisonPlan,
+  type InterventionState,
   type SupportMode,
 } from "./transformation";
 
@@ -88,12 +90,15 @@ export function assertPlaybackPreconditions(
   plan: ComparisonPlan,
   mode: ComparisonMode,
   supportMode: SupportMode,
+  interventionState: InterventionState,
   lowVolumeAcknowledged: boolean,
   sourceIdentity: string | null,
 ): void {
   assertValidComparisonPlan(plan);
   const selectedResult =
-    mode === "reference" ? plan.reference : resultForSupportMode(plan, supportMode);
+    mode === "reference"
+      ? referenceResultForIntervention(plan, interventionState)
+      : resultForSupportMode(plan, supportMode, interventionState);
 
   if (!lowVolumeAcknowledged) {
     throw new AudioSafetyError("Low-volume acknowledgement is required before playback.");

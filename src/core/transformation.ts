@@ -26,12 +26,30 @@ export type SpectralFilter = Readonly<{
 
 export type ComparisonMode = "reference" | "simulated";
 export type SupportMode = "none" | "left-one-sided" | "bilateral";
+export type InterventionState = "tv-on" | "tv-off";
+
+export type SourceContributionPlan = Readonly<{
+  focusedSpeech: 1;
+  overlappingSpeech: 1;
+  television: 0 | 1;
+  kitchenRoom: 1;
+}>;
+
+export type ReferenceResultPlan = Readonly<{
+  mode: "reference";
+  interventionState: InterventionState;
+  sourceIdentity: string;
+  resultIdentity: string;
+  sourceContributions: SourceContributionPlan;
+}>;
 
 export type TransformedResultPlan = Readonly<{
   mode: "simulated";
   supportMode: SupportMode;
+  interventionState: InterventionState;
   sourceIdentity: string;
   resultIdentity: string;
+  sourceContributions: SourceContributionPlan;
   leftFilters: readonly SpectralFilter[];
   rightFilters: readonly SpectralFilter[];
 }>;
@@ -41,11 +59,7 @@ export type ComparisonPlan = Readonly<{
   supportAlgorithmVersion: typeof SUPPORT_ALGORITHM_VERSION;
   sourceIdentity: string;
   profileId: string;
-  reference: Readonly<{
-    mode: "reference";
-    sourceIdentity: string;
-    resultIdentity: string;
-  }>;
+  reference: ReferenceResultPlan;
   simulated: TransformedResultPlan;
   support: Readonly<{
     "left-one-sided": TransformedResultPlan;
@@ -53,6 +67,22 @@ export type ComparisonPlan = Readonly<{
   }>;
   limitation: "illustrative-non-clinical";
 }>;
+
+const TV_ON_IDENTITY_SUFFIX = "|intervention:tv-on";
+
+const TV_ON_SOURCE_CONTRIBUTIONS: SourceContributionPlan = Object.freeze({
+  focusedSpeech: 1 as const,
+  overlappingSpeech: 1 as const,
+  television: 1 as const,
+  kitchenRoom: 1 as const,
+});
+
+const TV_OFF_SOURCE_CONTRIBUTIONS: SourceContributionPlan = Object.freeze({
+  focusedSpeech: 1 as const,
+  overlappingSpeech: 1 as const,
+  television: 0 as const,
+  kitchenRoom: 1 as const,
+});
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -108,6 +138,49 @@ function serializeFilters(filters: readonly SpectralFilter[]): string {
     .join(",");
 }
 
+export function sourceContributionsForIntervention(
+  interventionState: InterventionState,
+): SourceContributionPlan {
+  return interventionState === "tv-on"
+    ? TV_ON_SOURCE_CONTRIBUTIONS
+    : TV_OFF_SOURCE_CONTRIBUTIONS;
+}
+
+function identityForIntervention(
+  tvOnResultIdentity: string,
+  interventionState: InterventionState,
+): string {
+  if (!tvOnResultIdentity.endsWith(TV_ON_IDENTITY_SUFFIX)) {
+    throw new Error("The transformation result identity has no canonical TV state.");
+  }
+
+  if (interventionState === "tv-on") {
+    return tvOnResultIdentity;
+  }
+
+  return `${tvOnResultIdentity.slice(0, -TV_ON_IDENTITY_SUFFIX.length)}|intervention:tv-off`;
+}
+
+function transformedResultForIntervention(
+  result: TransformedResultPlan,
+  interventionState: InterventionState,
+): TransformedResultPlan {
+  if (interventionState === "tv-on") {
+    return result;
+  }
+
+  return Object.freeze({
+    ...result,
+    interventionState,
+    resultIdentity: identityForIntervention(
+      result.resultIdentity,
+      interventionState,
+    ),
+    sourceContributions:
+      sourceContributionsForIntervention(interventionState),
+  });
+}
+
 export function createComparisonPlan(
   profile: ConfirmedHearingProfile,
   sourceIdentity: string,
@@ -124,30 +197,33 @@ export function createComparisonPlan(
   const supportedRightFilters = Object.freeze(
     createEarFilters(profile, "right", true),
   );
-  const referenceIdentity = `reference-v1:${sourceIdentity}`;
-  const simulatedIdentity = [
-    TRANSFORMATION_ALGORITHM_VERSION,
-    sourceIdentity,
-    profile.profileId,
-    `L[${serializeFilters(leftFilters)}]`,
-    `R[${serializeFilters(rightFilters)}]`,
-  ].join("|");
-  const leftSupportIdentity = [
-    SUPPORT_ALGORITHM_VERSION,
-    "left-one-sided",
-    sourceIdentity,
-    profile.profileId,
-    `L[${serializeFilters(supportedLeftFilters)}]`,
-    `R[${serializeFilters(rightFilters)}]`,
-  ].join("|");
-  const bilateralIdentity = [
-    SUPPORT_ALGORITHM_VERSION,
-    "bilateral",
-    sourceIdentity,
-    profile.profileId,
-    `L[${serializeFilters(supportedLeftFilters)}]`,
-    `R[${serializeFilters(supportedRightFilters)}]`,
-  ].join("|");
+  const referenceIdentity = `reference-v1:${sourceIdentity}${TV_ON_IDENTITY_SUFFIX}`;
+  const simulatedIdentity =
+    [
+      TRANSFORMATION_ALGORITHM_VERSION,
+      sourceIdentity,
+      profile.profileId,
+      `L[${serializeFilters(leftFilters)}]`,
+      `R[${serializeFilters(rightFilters)}]`,
+    ].join("|") + TV_ON_IDENTITY_SUFFIX;
+  const leftSupportIdentity =
+    [
+      SUPPORT_ALGORITHM_VERSION,
+      "left-one-sided",
+      sourceIdentity,
+      profile.profileId,
+      `L[${serializeFilters(supportedLeftFilters)}]`,
+      `R[${serializeFilters(rightFilters)}]`,
+    ].join("|") + TV_ON_IDENTITY_SUFFIX;
+  const bilateralIdentity =
+    [
+      SUPPORT_ALGORITHM_VERSION,
+      "bilateral",
+      sourceIdentity,
+      profile.profileId,
+      `L[${serializeFilters(supportedLeftFilters)}]`,
+      `R[${serializeFilters(supportedRightFilters)}]`,
+    ].join("|") + TV_ON_IDENTITY_SUFFIX;
 
   const plan = Object.freeze({
     algorithmVersion: TRANSFORMATION_ALGORITHM_VERSION,
@@ -156,14 +232,18 @@ export function createComparisonPlan(
     profileId: profile.profileId,
     reference: Object.freeze({
       mode: "reference" as const,
+      interventionState: "tv-on" as const,
       sourceIdentity,
       resultIdentity: referenceIdentity,
+      sourceContributions: TV_ON_SOURCE_CONTRIBUTIONS,
     }),
     simulated: Object.freeze({
       mode: "simulated" as const,
       supportMode: "none" as const,
+      interventionState: "tv-on" as const,
       sourceIdentity,
       resultIdentity: simulatedIdentity,
+      sourceContributions: TV_ON_SOURCE_CONTRIBUTIONS,
       leftFilters,
       rightFilters,
     }),
@@ -171,16 +251,20 @@ export function createComparisonPlan(
       "left-one-sided": Object.freeze({
         mode: "simulated" as const,
         supportMode: "left-one-sided" as const,
+        interventionState: "tv-on" as const,
         sourceIdentity,
         resultIdentity: leftSupportIdentity,
+        sourceContributions: TV_ON_SOURCE_CONTRIBUTIONS,
         leftFilters: supportedLeftFilters,
         rightFilters,
       }),
       bilateral: Object.freeze({
         mode: "simulated" as const,
         supportMode: "bilateral" as const,
+        interventionState: "tv-on" as const,
         sourceIdentity,
         resultIdentity: bilateralIdentity,
+        sourceContributions: TV_ON_SOURCE_CONTRIBUTIONS,
         leftFilters: supportedLeftFilters,
         rightFilters: supportedRightFilters,
       }),
@@ -190,6 +274,22 @@ export function createComparisonPlan(
 
   assertValidComparisonPlan(plan);
   return plan;
+}
+
+function assertValidSourceContributions(
+  contributions: SourceContributionPlan,
+  interventionState: InterventionState,
+): void {
+  const expected = sourceContributionsForIntervention(interventionState);
+
+  if (
+    contributions.focusedSpeech !== expected.focusedSpeech ||
+    contributions.overlappingSpeech !== expected.overlappingSpeech ||
+    contributions.television !== expected.television ||
+    contributions.kitchenRoom !== expected.kitchenRoom
+  ) {
+    throw new Error("The source contribution plan violates the TV intervention.");
+  }
 }
 
 function assertValidFilters(
@@ -233,6 +333,13 @@ export function assertValidComparisonPlan(plan: ComparisonPlan): void {
     plan.reference.resultIdentity,
     ...transformedResults.map((result) => result.resultIdentity),
   ];
+  const tvOffIdentities = [
+    referenceResultForIntervention(plan, "tv-off").resultIdentity,
+    ...(["none", "left-one-sided", "bilateral"] as const).map(
+      (supportMode) =>
+        resultForSupportMode(plan, supportMode, "tv-off").resultIdentity,
+    ),
+  ];
 
   if (
     plan.algorithmVersion !== TRANSFORMATION_ALGORITHM_VERSION ||
@@ -240,22 +347,35 @@ export function assertValidComparisonPlan(plan: ComparisonPlan): void {
     plan.sourceIdentity.trim() === "" ||
     plan.reference.sourceIdentity !== plan.sourceIdentity ||
     plan.reference.mode !== "reference" ||
+    plan.reference.interventionState !== "tv-on" ||
     plan.reference.resultIdentity.trim() === "" ||
     transformedResults.some(
       (result) =>
         result.mode !== "simulated" ||
+        result.interventionState !== "tv-on" ||
         result.sourceIdentity !== plan.sourceIdentity ||
         result.resultIdentity.trim() === "",
     ) ||
     plan.simulated.supportMode !== "none" ||
     plan.support["left-one-sided"].supportMode !== "left-one-sided" ||
     plan.support.bilateral.supportMode !== "bilateral" ||
-    new Set(identities).size !== identities.length ||
+    new Set([...identities, ...tvOffIdentities]).size !==
+      identities.length + tvOffIdentities.length ||
     plan.limitation !== "illustrative-non-clinical"
   ) {
     throw new Error("The comparison plan violates the same-source contract.");
   }
 
+  assertValidSourceContributions(
+    plan.reference.sourceContributions,
+    plan.reference.interventionState,
+  );
+  transformedResults.forEach((result) =>
+    assertValidSourceContributions(
+      result.sourceContributions,
+      result.interventionState,
+    ),
+  );
   assertValidFilters(plan.simulated.leftFilters, false);
   assertValidFilters(plan.simulated.rightFilters, false);
   assertValidFilters(plan.support["left-one-sided"].leftFilters, true);
@@ -267,23 +387,56 @@ export function assertValidComparisonPlan(plan: ComparisonPlan): void {
 export function resultForSupportMode(
   plan: ComparisonPlan,
   supportMode: SupportMode,
+  interventionState: InterventionState = "tv-on",
 ): TransformedResultPlan {
+  let result: TransformedResultPlan;
+
   switch (supportMode) {
     case "none":
-      return plan.simulated;
+      result = plan.simulated;
+      break;
     case "left-one-sided":
-      return plan.support["left-one-sided"];
+      result = plan.support["left-one-sided"];
+      break;
     case "bilateral":
-      return plan.support.bilateral;
+      result = plan.support.bilateral;
+      break;
   }
+
+  return transformedResultForIntervention(result, interventionState);
+}
+
+export function referenceResultForIntervention(
+  plan: ComparisonPlan,
+  interventionState: InterventionState,
+): ReferenceResultPlan {
+  if (interventionState === "tv-on") {
+    return plan.reference;
+  }
+
+  return Object.freeze({
+    ...plan.reference,
+    interventionState,
+    resultIdentity: identityForIntervention(
+      plan.reference.resultIdentity,
+      interventionState,
+    ),
+    sourceContributions:
+      sourceContributionsForIntervention(interventionState),
+  });
 }
 
 export function resultIdentityForMode(
   plan: ComparisonPlan,
   mode: ComparisonMode,
   supportMode: SupportMode = "none",
+  interventionState: InterventionState = "tv-on",
 ): string {
   return mode === "reference"
-    ? plan.reference.resultIdentity
-    : resultForSupportMode(plan, supportMode).resultIdentity;
+    ? referenceResultForIntervention(plan, interventionState).resultIdentity
+    : resultForSupportMode(
+        plan,
+        supportMode,
+        interventionState,
+      ).resultIdentity;
 }

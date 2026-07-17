@@ -14,6 +14,7 @@ import {
   experienceReducer,
   projectVisibleExperienceState,
   type ExperienceComparisonMode,
+  type ExperienceInterventionState,
   type ExperienceSupportMode,
 } from "../core/experience";
 import {
@@ -39,6 +40,11 @@ const supportLabels: Record<ExperienceSupportMode, string> = {
   none: "No support",
   "left-one-sided": "Left-ear support",
   bilateral: "Bilateral support",
+};
+
+const interventionLabels: Record<ExperienceInterventionState, string> = {
+  "tv-on": "TV on",
+  "tv-off": "TV off",
 };
 
 function isExpectedHealthResponse(value: unknown): boolean {
@@ -175,6 +181,7 @@ export default function HomePage() {
       const evidence = await audioEngine().play(
         mode,
         experience.supportMode,
+        experience.interventionState,
         plan,
         experience.lowVolumeAcknowledged,
         {
@@ -195,6 +202,7 @@ export default function HomePage() {
         type: "playback-started",
         mode,
         supportMode: evidence.supportMode,
+        interventionState: evidence.interventionState,
         sourceIdentity: evidence.sourceIdentity,
         resultIdentity: evidence.resultIdentity,
         peakDbFs: evidence.peakDbFs,
@@ -495,6 +503,45 @@ export default function HomePage() {
         </fieldset>
         <p className="state-line">{visible.support}</p>
 
+        <fieldset
+          className="intervention-selector"
+          disabled={
+            !experience.confirmedProfile ||
+            experience.source.status !== "ready" ||
+            controlsLocked
+          }
+        >
+          <legend>Illustrative environmental intervention</legend>
+          <div className="intervention-options">
+            {(["tv-on", "tv-off"] as const).map((interventionState) => (
+              <label key={interventionState}>
+                <input
+                  type="radio"
+                  name="intervention-state"
+                  value={interventionState}
+                  checked={
+                    experience.interventionState === interventionState
+                  }
+                  onChange={() =>
+                    dispatch({
+                      type: "intervention-state-changed",
+                      interventionState,
+                    })
+                  }
+                />
+                <span>{interventionLabels[interventionState]}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <p className="state-line">{visible.intervention}</p>
+        <p>{visible.interventionSummary}</p>
+        <p>
+          TV-off is an illustrative environmental comparison, not a medical
+          recommendation or a guaranteed outcome. This summary is deterministic
+          and does not come from a live model.
+        </p>
+
         {selectedTransformation ? (
           <div className="table-scroll proof-table">
             <table>
@@ -556,7 +603,8 @@ export default function HomePage() {
               controlsLocked
             }
           >
-            Play source reference
+            Play source reference —{" "}
+            {interventionLabels[experience.interventionState]}
           </button>
           <button
             type="button"
@@ -568,7 +616,8 @@ export default function HomePage() {
               controlsLocked
             }
           >
-            Play {supportLabels[experience.supportMode].toLowerCase()} result
+            Play {supportLabels[experience.supportMode].toLowerCase()} result —{" "}
+            {interventionLabels[experience.interventionState]}
           </button>
           <button
             className="stop-button"
@@ -586,6 +635,8 @@ export default function HomePage() {
             <li>{visible.profile}</li>
             <li>{visible.source}</li>
             <li>{visible.support}</li>
+            <li>{visible.intervention}</li>
+            <li>{visible.interventionSummary}</li>
             <li>{visible.reference}</li>
             <li>{visible.simulated}</li>
             <li>{visible.playback}</li>

@@ -27,7 +27,9 @@ import {
   SUPPORT_MAX_COMPENSATION_DB,
   assertValidComparisonPlan,
   createComparisonPlan,
+  referenceResultForIntervention,
   resultForSupportMode,
+  sourceContributionsForIntervention,
   supportCompensationDb,
   supportedThresholdToGainDb,
   thresholdToGainDb,
@@ -448,6 +450,182 @@ describe("genuine support progression", () => {
   });
 });
 
+describe("coherent TV-off intervention", () => {
+  it("removes only the television contribution and preserves the source plan", () => {
+    const plan = createComparisonPlan(confirmedProfile(), SOURCE_IDENTITY);
+    const referenceOn = referenceResultForIntervention(plan, "tv-on");
+    const referenceOff = referenceResultForIntervention(plan, "tv-off");
+
+    expect(referenceOn.sourceContributions).toEqual({
+      focusedSpeech: 1,
+      overlappingSpeech: 1,
+      television: 1,
+      kitchenRoom: 1,
+    });
+    expect(referenceOff.sourceContributions).toEqual({
+      focusedSpeech: 1,
+      overlappingSpeech: 1,
+      television: 0,
+      kitchenRoom: 1,
+    });
+    expect(referenceOff.sourceIdentity).toBe(referenceOn.sourceIdentity);
+    expect(referenceOff.resultIdentity).not.toBe(referenceOn.resultIdentity);
+
+    for (const supportMode of [
+      "none",
+      "left-one-sided",
+      "bilateral",
+    ] as const) {
+      const tvOn = resultForSupportMode(plan, supportMode, "tv-on");
+      const tvOff = resultForSupportMode(plan, supportMode, "tv-off");
+
+      expect(tvOff.sourceContributions).toEqual(
+        sourceContributionsForIntervention("tv-off"),
+      );
+      expect(tvOff.sourceIdentity).toBe(tvOn.sourceIdentity);
+      expect(tvOff.resultIdentity).not.toBe(tvOn.resultIdentity);
+      expect(tvOff.leftFilters).toEqual(tvOn.leftFilters);
+      expect(tvOff.rightFilters).toEqual(tvOn.rightFilters);
+    }
+  });
+
+  it("is deterministic for every profile and support state", () => {
+    const profiles = [
+      confirmedProfile(),
+      ...PREDEFINED_HEARING_PROFILES.map((fixture) =>
+        confirmPredefinedProfile(fixture.id, 0),
+      ),
+    ];
+
+    for (const profile of profiles) {
+      const first = createComparisonPlan(profile, SOURCE_IDENTITY);
+      const second = createComparisonPlan(profile, SOURCE_IDENTITY);
+
+      for (const supportMode of [
+        "none",
+        "left-one-sided",
+        "bilateral",
+      ] as const) {
+        const firstResult = resultForSupportMode(
+          first,
+          supportMode,
+          "tv-off",
+        );
+        const secondResult = resultForSupportMode(
+          second,
+          supportMode,
+          "tv-off",
+        );
+
+        expect(firstResult).toEqual(secondResult);
+        expect(firstResult.sourceIdentity).toBe(SOURCE_IDENTITY);
+        expect(firstResult.sourceContributions.television).toBe(0);
+      }
+    }
+  });
+
+  it("keeps intervention state canonical and rejects stale playback", () => {
+    let state = confirmedState();
+    expect(state.interventionState).toBe("tv-on");
+    expect(projectVisibleExperienceState(state)).toMatchObject({
+      intervention: "Environmental intervention: TV on.",
+      interventionSummary:
+        "The television remains part of the competing family scene.",
+    });
+
+    state = experienceReducer(state, {
+      type: "low-volume-acknowledgement-changed",
+      acknowledged: true,
+    });
+    state = experienceReducer(state, { type: "source-load-started" });
+    state = experienceReducer(state, {
+      type: "source-ready",
+      sourceIdentity: SOURCE_IDENTITY,
+      sampleRate: 24000,
+      frameCount: 1536000,
+      durationSeconds: 64,
+    });
+    state = experienceReducer(state, {
+      type: "render-started",
+      mode: "simulated",
+    });
+
+    const tvOnIdentity = currentTransformedResult(state)!.resultIdentity;
+    state = experienceReducer(state, {
+      type: "playback-started",
+      mode: "simulated",
+      supportMode: "none",
+      interventionState: "tv-on",
+      sourceIdentity: SOURCE_IDENTITY,
+      resultIdentity: tvOnIdentity,
+      peakDbFs: -9,
+    });
+
+    const rejectedWhilePlaying = experienceReducer(state, {
+      type: "intervention-state-changed",
+      interventionState: "tv-off",
+    });
+    expect(rejectedWhilePlaying.failure?.code).toBe("invalid-transition");
+    expect(rejectedWhilePlaying.interventionState).toBe("tv-on");
+    expect(rejectedWhilePlaying.playback.status).toBe("playing");
+
+    state = experienceReducer(rejectedWhilePlaying, {
+      type: "playback-stopped",
+    });
+    state = experienceReducer(state, {
+      type: "intervention-state-changed",
+      interventionState: "tv-off",
+    });
+
+    const tvOffIdentity = currentTransformedResult(state)!.resultIdentity;
+    expect(state.interventionState).toBe("tv-off");
+    expect(state.source.status).toBe("ready");
+    expect(state.renders.reference.status).toBe("idle");
+    expect(state.renders.simulated.status).toBe("idle");
+    expect(state.playback.status).toBe("stopped");
+    expect(tvOffIdentity).not.toBe(tvOnIdentity);
+    expect(projectVisibleExperienceState(state)).toMatchObject({
+      intervention: "Environmental intervention: TV off.",
+      interventionSummary:
+        "The television contribution has been removed; focused speech, overlapping speech, and room events remain unchanged.",
+    });
+
+    state = experienceReducer(state, {
+      type: "render-started",
+      mode: "simulated",
+    });
+    const stale = experienceReducer(state, {
+      type: "playback-started",
+      mode: "simulated",
+      supportMode: "none",
+      interventionState: "tv-on",
+      sourceIdentity: SOURCE_IDENTITY,
+      resultIdentity: tvOnIdentity,
+      peakDbFs: -9,
+    });
+    expect(stale.failure?.code).toBe("stale-transition");
+    expect(stale.playback.status).toBe("stopped");
+
+    state = experienceReducer(stale, {
+      type: "playback-started",
+      mode: "simulated",
+      supportMode: "none",
+      interventionState: "tv-off",
+      sourceIdentity: SOURCE_IDENTITY,
+      resultIdentity: tvOffIdentity,
+      peakDbFs: -9,
+    });
+    expect(state.playback).toMatchObject({
+      status: "playing",
+      interventionState: "tv-off",
+      resultIdentity: tvOffIdentity,
+    });
+
+    state = experienceReducer(state, { type: "playback-stopped" });
+    expect(state.playback.status).toBe("stopped");
+  });
+});
+
 describe("canonical experience state", () => {
   it("confirms only the canonically selected predefined profile", () => {
     let state = createInitialExperienceState();
@@ -530,6 +708,7 @@ describe("canonical experience state", () => {
       type: "playback-started",
       mode: "simulated",
       supportMode: "bilateral",
+      interventionState: "tv-on",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity,
       peakDbFs: -9,
@@ -594,6 +773,7 @@ describe("canonical experience state", () => {
       type: "playback-started",
       mode: "simulated",
       supportMode: "none",
+      interventionState: "tv-on",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity: resultIdentity!,
       peakDbFs: -9,
@@ -688,6 +868,7 @@ describe("canonical experience state", () => {
       type: "playback-started",
       mode: "reference",
       supportMode: null,
+      interventionState: "tv-on",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity,
       peakDbFs: -8,
@@ -761,6 +942,7 @@ describe("canonical experience state", () => {
       type: "playback-started",
       mode: "simulated",
       supportMode: "left-one-sided",
+      interventionState: "tv-on",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity,
       peakDbFs: -8,
@@ -795,12 +977,20 @@ describe("fail-closed audio safety policy", () => {
         plan,
         "reference",
         "none",
+        "tv-on",
         false,
         SOURCE_IDENTITY,
       ),
     ).toThrow(AudioSafetyError);
     expect(() =>
-      assertPlaybackPreconditions(plan, "reference", "none", true, "wrong-source"),
+      assertPlaybackPreconditions(
+        plan,
+        "reference",
+        "none",
+        "tv-off",
+        true,
+        "wrong-source",
+      ),
     ).toThrow(AudioSafetyError);
   });
 

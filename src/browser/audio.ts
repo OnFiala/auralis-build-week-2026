@@ -8,10 +8,12 @@ import {
   type SourceBufferMetadata,
 } from "../core/safety";
 import {
+  referenceResultForIntervention,
   resultForSupportMode,
-  resultIdentityForMode,
   type ComparisonMode,
   type ComparisonPlan,
+  type InterventionState,
+  type SourceContributionPlan,
   type SpectralFilter,
   type SupportMode,
 } from "../core/transformation";
@@ -77,6 +79,7 @@ export type PlaybackEvidence = Readonly<{
   resultIdentity: string;
   mode: ComparisonMode;
   supportMode: SupportMode | null;
+  interventionState: InterventionState;
   peakDbFs: number;
   durationSeconds: number;
   sampleRate: number;
@@ -210,6 +213,22 @@ function metadataForBuffer(buffer: AudioBuffer): SourceBufferMetadata {
   });
 }
 
+function contributionForAsset(
+  contributions: SourceContributionPlan,
+  file: ManifestAsset["file"],
+): 0 | 1 {
+  switch (file) {
+    case "focused-speech.wav":
+      return contributions.focusedSpeech;
+    case "overlapping-speech.wav":
+      return contributions.overlappingSpeech;
+    case "television.wav":
+      return contributions.television;
+    case "kitchen-room.wav":
+      return contributions.kitchenRoom;
+  }
+}
+
 function connectFilterChain(
   context: OfflineAudioContext,
   input: AudioNode,
@@ -295,6 +314,7 @@ export class BrowserAudioEngine {
   async play(
     mode: ComparisonMode,
     supportMode: SupportMode,
+    interventionState: InterventionState,
     plan: ComparisonPlan,
     lowVolumeAcknowledged: boolean,
     callbacks: Readonly<{ onEnded: () => void; onInterrupted: () => void }>,
@@ -308,6 +328,7 @@ export class BrowserAudioEngine {
       plan,
       mode,
       supportMode,
+      interventionState,
       lowVolumeAcknowledged,
       loadedSource?.manifest.sourceIdentity ?? null,
     );
@@ -321,6 +342,7 @@ export class BrowserAudioEngine {
     const rendered = await this.getRenderedResult(
       mode,
       supportMode,
+      interventionState,
       plan,
       loadedSource,
     );
@@ -375,6 +397,7 @@ export class BrowserAudioEngine {
       resultIdentity: rendered.resultIdentity,
       mode,
       supportMode: mode === "reference" ? null : supportMode,
+      interventionState,
       peakDbFs: rendered.validation.peakDbFs,
       durationSeconds: rendered.validation.durationSeconds,
       sampleRate: rendered.validation.sampleRate,
@@ -465,10 +488,15 @@ export class BrowserAudioEngine {
   private async getRenderedResult(
     mode: ComparisonMode,
     supportMode: SupportMode,
+    interventionState: InterventionState,
     plan: ComparisonPlan,
     source: LoadedSource,
   ): Promise<RenderedResult> {
-    const resultIdentity = resultIdentityForMode(plan, mode, supportMode);
+    const selectedResult =
+      mode === "reference"
+        ? referenceResultForIntervention(plan, interventionState)
+        : resultForSupportMode(plan, supportMode, interventionState);
+    const resultIdentity = selectedResult.resultIdentity;
     const cached = this.renderedResults.get(resultIdentity);
 
     if (cached) {
@@ -481,16 +509,30 @@ export class BrowserAudioEngine {
     const leftInput = context.createGain();
     const rightInput = context.createGain();
     const merger = context.createChannelMerger(2);
-    const sources = source.buffers.map((buffer) => {
+    const sources = source.buffers.flatMap((buffer, index) => {
+      const asset = source.manifest.assets[index];
+
+      if (
+        !asset ||
+        contributionForAsset(
+          selectedResult.sourceContributions,
+          asset.file,
+        ) === 0
+      ) {
+        return [];
+      }
+
       const node = context.createBufferSource();
       node.buffer = buffer;
       node.connect(leftInput);
       node.connect(rightInput);
-      return node;
+      return [node];
     });
 
     const transformed =
-      mode === "simulated" ? resultForSupportMode(plan, supportMode) : null;
+      mode === "simulated"
+        ? resultForSupportMode(plan, supportMode, interventionState)
+        : null;
     const leftFilters = transformed?.leftFilters ?? [];
     const rightFilters = transformed?.rightFilters ?? [];
     connectFilterChain(context, leftInput, leftFilters, merger, 0);

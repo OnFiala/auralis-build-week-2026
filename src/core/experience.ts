@@ -19,12 +19,14 @@ import {
   resultIdentityForMode,
   type ComparisonMode,
   type ComparisonPlan,
+  type InterventionState,
   type SupportMode,
   type TransformedResultPlan,
 } from "./transformation";
 
 export type ExperienceComparisonMode = ComparisonMode;
 export type ExperienceSupportMode = SupportMode;
+export type ExperienceInterventionState = InterventionState;
 export type ExperienceProfileEntryOption = ProfileEntryOption;
 
 type SourceState =
@@ -51,17 +53,25 @@ type RenderState =
   | Readonly<{ status: "failed" }>;
 
 type PlaybackState =
-  | Readonly<{ status: "stopped"; mode: null; resultIdentity: null }>
+  | Readonly<{
+      status: "stopped";
+      mode: null;
+      supportMode: null;
+      interventionState: null;
+      resultIdentity: null;
+    }>
   | Readonly<{
       status: "playing";
       mode: ComparisonMode;
       supportMode: SupportMode | null;
+      interventionState: InterventionState;
       resultIdentity: string;
     }>
   | Readonly<{
       status: "failed";
       mode: null;
       supportMode: null;
+      interventionState: null;
       resultIdentity: null;
     }>;
 
@@ -93,6 +103,7 @@ export type ExperienceState = Readonly<{
   confirmedProfile: ConfirmedHearingProfile | null;
   comparisonPlan: ComparisonPlan | null;
   supportMode: SupportMode;
+  interventionState: InterventionState;
   source: SourceState;
   renders: Readonly<Record<ComparisonMode, RenderState>>;
   lowVolumeAcknowledged: boolean;
@@ -118,6 +129,10 @@ export type ExperienceAction =
       sourceIdentity: string;
     }>
   | Readonly<{ type: "support-mode-changed"; supportMode: SupportMode }>
+  | Readonly<{
+      type: "intervention-state-changed";
+      interventionState: InterventionState;
+    }>
   | Readonly<{ type: "low-volume-acknowledgement-changed"; acknowledged: boolean }>
   | Readonly<{ type: "source-load-started" }>
   | Readonly<{
@@ -132,6 +147,7 @@ export type ExperienceAction =
       type: "playback-started";
       mode: ComparisonMode;
       supportMode: SupportMode | null;
+      interventionState: InterventionState;
       sourceIdentity: string;
       resultIdentity: string;
       peakDbFs: number;
@@ -167,6 +183,7 @@ const stoppedPlayback = (): PlaybackState =>
     status: "stopped" as const,
     mode: null,
     supportMode: null,
+    interventionState: null,
     resultIdentity: null,
   });
 
@@ -179,6 +196,7 @@ export function createInitialExperienceState(): ExperienceState {
     confirmedProfile: null,
     comparisonPlan: null,
     supportMode: "none" as const,
+    interventionState: "tv-on" as const,
     source: Object.freeze({ status: "idle" as const }),
     renders: idleRenders(),
     lowVolumeAcknowledged: false,
@@ -210,7 +228,12 @@ function expectedResultIdentity(
   mode: ComparisonMode,
 ): string | null {
   return state.comparisonPlan
-    ? resultIdentityForMode(state.comparisonPlan, mode, state.supportMode)
+    ? resultIdentityForMode(
+        state.comparisonPlan,
+        mode,
+        state.supportMode,
+        state.interventionState,
+      )
     : null;
 }
 
@@ -225,7 +248,11 @@ export function currentTransformedResult(
   state: ExperienceState,
 ): TransformedResultPlan | null {
   return state.comparisonPlan
-    ? resultForSupportMode(state.comparisonPlan, state.supportMode)
+    ? resultForSupportMode(
+        state.comparisonPlan,
+        state.supportMode,
+        state.interventionState,
+      )
     : null;
 }
 
@@ -241,6 +268,7 @@ function confirmProfile(
     confirmedProfile: profile,
     comparisonPlan,
     supportMode: "none" as const,
+    interventionState: "tv-on" as const,
     renders: idleRenders(),
     playback: stoppedPlayback(),
     failure: null,
@@ -266,6 +294,7 @@ export function experienceReducer(
         confirmedProfile: null,
         comparisonPlan: null,
         supportMode: "none" as const,
+        interventionState: "tv-on" as const,
         source:
           state.source.status === "loading"
             ? Object.freeze({ status: "idle" as const })
@@ -304,6 +333,7 @@ export function experienceReducer(
         confirmedProfile: null,
         comparisonPlan: null,
         supportMode: "none" as const,
+        interventionState: "tv-on" as const,
         source:
           state.source.status === "loading"
             ? Object.freeze({ status: "idle" as const })
@@ -336,6 +366,7 @@ export function experienceReducer(
             confirmedProfile: null,
             comparisonPlan: null,
             supportMode: "none" as const,
+            interventionState: "tv-on" as const,
             renders: idleRenders(),
             failure: failure("invalid-profile"),
           });
@@ -367,6 +398,7 @@ export function experienceReducer(
             confirmedProfile: null,
             comparisonPlan: null,
             supportMode: "none" as const,
+            interventionState: "tv-on" as const,
             renders: idleRenders(),
             failure: failure("invalid-profile"),
           });
@@ -404,6 +436,36 @@ export function experienceReducer(
           ...state.renders,
           simulated: Object.freeze({ status: "idle" as const }),
         }),
+        playback: stoppedPlayback(),
+        failure: null,
+      });
+    }
+
+    case "intervention-state-changed": {
+      const rendering =
+        state.renders.reference.status === "rendering" ||
+        state.renders.simulated.status === "rendering";
+
+      if (
+        !state.comparisonPlan ||
+        state.source.status !== "ready" ||
+        state.playback.status === "playing" ||
+        rendering
+      ) {
+        return rejectTransition(state, "invalid-transition");
+      }
+
+      if (state.interventionState === action.interventionState) {
+        return Object.freeze({
+          ...state,
+          failure: null,
+        });
+      }
+
+      return Object.freeze({
+        ...state,
+        interventionState: action.interventionState,
+        renders: idleRenders(),
         playback: stoppedPlayback(),
         failure: null,
       });
@@ -495,6 +557,7 @@ export function experienceReducer(
         expectedIdentity === null ||
         expectedIdentity !== action.resultIdentity ||
         action.supportMode !== expectedSupportMode ||
+        action.interventionState !== state.interventionState ||
         state.renders[action.mode].status !== "rendering"
       ) {
         return rejectTransition(state, "stale-transition");
@@ -515,6 +578,7 @@ export function experienceReducer(
           status: "playing" as const,
           mode: action.mode,
           supportMode: expectedSupportMode,
+          interventionState: state.interventionState,
           resultIdentity: action.resultIdentity,
         }),
         failure: null,
@@ -569,6 +633,7 @@ export function experienceReducer(
           status: "failed" as const,
           mode: null,
           supportMode: null,
+          interventionState: null,
           resultIdentity: null,
         }),
         failure: failure(action.code),
@@ -581,6 +646,8 @@ export type VisibleExperienceState = Readonly<{
   profile: string;
   source: string;
   support: string;
+  intervention: string;
+  interventionSummary: string;
   reference: string;
   simulated: string;
   playback: string;
@@ -594,23 +661,36 @@ const supportLabels: Record<SupportMode, string> = {
   bilateral: "Bilateral support",
 };
 
+const interventionLabels: Record<InterventionState, string> = {
+  "tv-on": "TV on",
+  "tv-off": "TV off",
+};
+
+const interventionSummaries: Record<InterventionState, string> = {
+  "tv-on": "The television remains part of the competing family scene.",
+  "tv-off":
+    "The television contribution has been removed; focused speech, overlapping speech, and room events remain unchanged.",
+};
+
 function renderLabel(
   mode: ComparisonMode,
   supportMode: SupportMode,
+  interventionState: InterventionState,
   render: RenderState,
 ): string {
   const name =
     mode === "reference" ? "Reference" : supportLabels[supportMode];
+  const intervention = interventionLabels[interventionState];
 
   switch (render.status) {
     case "idle":
-      return `${name}: not rendered.`;
+      return `${name}, ${intervention}: not rendered.`;
     case "rendering":
-      return `${name}: validating and rendering.`;
+      return `${name}, ${intervention}: validating and rendering.`;
     case "ready":
-      return `${name}: validated at ${render.peakDbFs.toFixed(1)} dBFS peak.`;
+      return `${name}, ${intervention}: validated at ${render.peakDbFs.toFixed(1)} dBFS peak.`;
     case "failed":
-      return `${name}: rejected.`;
+      return `${name}, ${intervention}: rejected.`;
   }
 }
 
@@ -646,8 +726,8 @@ export function projectVisibleExperienceState(
   const playback =
     state.playback.status === "playing"
       ? state.playback.mode === "reference"
-        ? "Playback: reference."
-        : `Playback: ${supportLabels[state.playback.supportMode ?? "none"]}.`
+        ? `Playback: reference, ${interventionLabels[state.playback.interventionState]}.`
+        : `Playback: ${supportLabels[state.playback.supportMode ?? "none"]}, ${interventionLabels[state.playback.interventionState]}.`
       : state.playback.status === "failed"
         ? "Playback: blocked."
         : "Playback: stopped.";
@@ -660,8 +740,20 @@ export function projectVisibleExperienceState(
     profile,
     source,
     support: `Support state: ${supportLabels[state.supportMode]}.`,
-    reference: renderLabel("reference", state.supportMode, state.renders.reference),
-    simulated: renderLabel("simulated", state.supportMode, state.renders.simulated),
+    intervention: `Environmental intervention: ${interventionLabels[state.interventionState]}.`,
+    interventionSummary: interventionSummaries[state.interventionState],
+    reference: renderLabel(
+      "reference",
+      state.supportMode,
+      state.interventionState,
+      state.renders.reference,
+    ),
+    simulated: renderLabel(
+      "simulated",
+      state.supportMode,
+      state.interventionState,
+      state.renders.simulated,
+    ),
     playback,
     lastEdit,
     failure: state.failure?.message ?? null,
