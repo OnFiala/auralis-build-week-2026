@@ -1,12 +1,17 @@
 import {
+  MANUAL_PROFILE_ENTRY_LABEL,
   ProfileValidationError,
   confirmManualAudiogramDraft,
+  confirmPredefinedProfile,
   createManualAudiogramDraft,
+  predefinedProfileById,
   updateManualAudiogramDraft,
   type ConfirmedHearingProfile,
   type Ear,
   type FrequencyKey,
   type ManualAudiogramDraft,
+  type PredefinedProfileId,
+  type ProfileEntryOption,
 } from "./profile";
 import {
   createComparisonPlan,
@@ -20,6 +25,7 @@ import {
 
 export type ExperienceComparisonMode = ComparisonMode;
 export type ExperienceSupportMode = SupportMode;
+export type ExperienceProfileEntryOption = ProfileEntryOption;
 
 type SourceState =
   | Readonly<{ status: "idle" }>
@@ -75,6 +81,7 @@ export type ValidatedFailure = Readonly<{
 }>;
 
 export type ExperienceState = Readonly<{
+  selectedProfileEntry: ProfileEntryOption;
   manualDraft: ManualAudiogramDraft;
   draftRevision: number;
   lastEdit: Readonly<{
@@ -95,12 +102,21 @@ export type ExperienceState = Readonly<{
 
 export type ExperienceAction =
   | Readonly<{
+      type: "profile-entry-selected";
+      entryOption: ProfileEntryOption;
+    }>
+  | Readonly<{
       type: "manual-value-changed";
       ear: Ear;
       frequency: FrequencyKey;
       value: string;
     }>
   | Readonly<{ type: "manual-profile-confirmed"; sourceIdentity: string }>
+  | Readonly<{
+      type: "predefined-profile-confirmed";
+      profileId: PredefinedProfileId;
+      sourceIdentity: string;
+    }>
   | Readonly<{ type: "support-mode-changed"; supportMode: SupportMode }>
   | Readonly<{ type: "low-volume-acknowledgement-changed"; acknowledged: boolean }>
   | Readonly<{ type: "source-load-started" }>
@@ -156,6 +172,7 @@ const stoppedPlayback = (): PlaybackState =>
 
 export function createInitialExperienceState(): ExperienceState {
   return Object.freeze({
+    selectedProfileEntry: "manual" as const,
     manualDraft: createManualAudiogramDraft(),
     draftRevision: 0,
     lastEdit: null,
@@ -212,13 +229,58 @@ export function currentTransformedResult(
     : null;
 }
 
+function confirmProfile(
+  state: ExperienceState,
+  profile: ConfirmedHearingProfile,
+  sourceIdentity: string,
+): ExperienceState {
+  const comparisonPlan = createComparisonPlan(profile, sourceIdentity);
+
+  return Object.freeze({
+    ...state,
+    confirmedProfile: profile,
+    comparisonPlan,
+    supportMode: "none" as const,
+    renders: idleRenders(),
+    playback: stoppedPlayback(),
+    failure: null,
+  });
+}
+
 export function experienceReducer(
   state: ExperienceState,
   action: ExperienceAction,
 ): ExperienceState {
   switch (action.type) {
+    case "profile-entry-selected": {
+      if (state.selectedProfileEntry === action.entryOption) {
+        return Object.freeze({
+          ...state,
+          failure: null,
+        });
+      }
+
+      return Object.freeze({
+        ...state,
+        selectedProfileEntry: action.entryOption,
+        confirmedProfile: null,
+        comparisonPlan: null,
+        supportMode: "none" as const,
+        source:
+          state.source.status === "loading"
+            ? Object.freeze({ status: "idle" as const })
+            : state.source,
+        renders: idleRenders(),
+        playback: stoppedPlayback(),
+        failure: null,
+      });
+    }
+
     case "manual-value-changed": {
-      if (state.playback.status === "playing") {
+      if (
+        state.selectedProfileEntry !== "manual" ||
+        state.playback.status === "playing"
+      ) {
         return rejectTransition(state, "invalid-transition");
       }
 
@@ -253,7 +315,10 @@ export function experienceReducer(
     }
 
     case "manual-profile-confirmed": {
-      if (state.playback.status === "playing") {
+      if (
+        state.selectedProfileEntry !== "manual" ||
+        state.playback.status === "playing"
+      ) {
         return rejectTransition(state, "invalid-transition");
       }
 
@@ -262,17 +327,39 @@ export function experienceReducer(
           state.manualDraft,
           state.draftRevision,
         );
-        const comparisonPlan = createComparisonPlan(profile, action.sourceIdentity);
 
-        return Object.freeze({
-          ...state,
-          confirmedProfile: profile,
-          comparisonPlan,
-          supportMode: "none" as const,
-          renders: idleRenders(),
-          playback: stoppedPlayback(),
-          failure: null,
-        });
+        return confirmProfile(state, profile, action.sourceIdentity);
+      } catch (error) {
+        if (error instanceof ProfileValidationError) {
+          return Object.freeze({
+            ...state,
+            confirmedProfile: null,
+            comparisonPlan: null,
+            supportMode: "none" as const,
+            renders: idleRenders(),
+            failure: failure("invalid-profile"),
+          });
+        }
+
+        throw error;
+      }
+    }
+
+    case "predefined-profile-confirmed": {
+      if (
+        state.selectedProfileEntry !== action.profileId ||
+        state.playback.status === "playing"
+      ) {
+        return rejectTransition(state, "invalid-transition");
+      }
+
+      try {
+        const profile = confirmPredefinedProfile(
+          action.profileId,
+          state.draftRevision,
+        );
+
+        return confirmProfile(state, profile, action.sourceIdentity);
       } catch (error) {
         if (error instanceof ProfileValidationError) {
           return Object.freeze({
@@ -530,9 +617,15 @@ function renderLabel(
 export function projectVisibleExperienceState(
   state: ExperienceState,
 ): VisibleExperienceState {
+  const selectedEntryName =
+    state.selectedProfileEntry === "manual"
+      ? MANUAL_PROFILE_ENTRY_LABEL
+      : predefinedProfileById(state.selectedProfileEntry).displayName;
   const profile = state.confirmedProfile
-    ? `Manual profile confirmed from revision ${state.confirmedProfile.revision}.`
-    : "Manual profile is not confirmed.";
+    ? state.confirmedProfile.sourceType === "manual"
+      ? `Manual audiogram confirmed from revision ${state.confirmedProfile.revision}.`
+      : `${state.confirmedProfile.displayName} confirmed as a synthetic illustrative profile.`
+    : `${selectedEntryName}: confirmation required.`;
 
   let source: string;
   switch (state.source.status) {
@@ -559,7 +652,7 @@ export function projectVisibleExperienceState(
         ? "Playback: blocked."
         : "Playback: stopped.";
 
-  const lastEdit = state.lastEdit
+  const lastEdit = state.selectedProfileEntry === "manual" && state.lastEdit
     ? `Last edit: ${state.lastEdit.ear} ear at ${state.lastEdit.frequency} Hz, ${state.lastEdit.previousValue || "missing"} → ${state.lastEdit.nextValue || "missing"} dB HL.`
     : null;
 

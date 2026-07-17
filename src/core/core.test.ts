@@ -9,9 +9,12 @@ import {
 } from "./experience";
 import {
   FREQUENCY_KEYS,
+  PREDEFINED_HEARING_PROFILES,
   ProfileValidationError,
   confirmManualAudiogram,
+  confirmPredefinedProfile,
   createManualAudiogramDraft,
+  type EarThresholds,
 } from "./profile";
 import {
   AUDIO_SAFETY_POLICY,
@@ -33,6 +36,31 @@ import {
 
 const SOURCE_IDENTITY =
   "auralis-family-dinner-greenhouse:a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed";
+
+const EXPECTED_PREDEFINED_PROFILES = [
+  {
+    id: "high-frequency-hearing-loss",
+    displayName: "High-frequency hearing loss",
+    right: [20, 20, 25, 35, 55, 70],
+    left: [20, 20, 25, 35, 55, 70],
+  },
+  {
+    id: "flat-hearing-loss",
+    displayName: "Flat hearing loss",
+    right: [45, 45, 45, 45, 45, 45],
+    left: [45, 45, 45, 45, 45, 45],
+  },
+  {
+    id: "asymmetric-hearing-loss",
+    displayName: "Asymmetric hearing loss",
+    right: [20, 20, 25, 30, 35, 40],
+    left: [45, 50, 55, 60, 65, 70],
+  },
+] as const;
+
+function thresholdValues(thresholds: EarThresholds): number[] {
+  return FREQUENCY_KEYS.map((frequency) => thresholds[frequency]);
+}
 
 function validThresholds(value = 25) {
   return {
@@ -133,7 +161,7 @@ describe("manual hearing profile", () => {
     }
   });
 
-  it("does not expose or substitute any nearest preset", () => {
+  it("does not substitute any nearest predefined profile", () => {
     const first = confirmedProfile();
     const second = confirmManualAudiogram(
       {
@@ -143,7 +171,7 @@ describe("manual hearing profile", () => {
       2,
     );
 
-    expect("presetId" in first).toBe(false);
+    expect(first.predefinedProfileId).toBeNull();
     expect(first.profileId).not.toBe(second.profileId);
     expect(first.leftThresholdsDbHl["4000"]).toBe(60);
     expect(second.leftThresholdsDbHl["4000"]).toBe(55);
@@ -160,6 +188,109 @@ describe("manual hearing profile", () => {
       "25",
       "25",
     ]);
+  });
+});
+
+describe("synthetic predefined hearing profiles", () => {
+  it("freezes exactly three unique approved fixtures with exact per-ear values", () => {
+    expect(PREDEFINED_HEARING_PROFILES).toHaveLength(3);
+    expect(
+      PREDEFINED_HEARING_PROFILES.map((profile) => ({
+        id: profile.id,
+        displayName: profile.displayName,
+        right: thresholdValues(profile.rightThresholdsDbHl),
+        left: thresholdValues(profile.leftThresholdsDbHl),
+      })),
+    ).toEqual(EXPECTED_PREDEFINED_PROFILES);
+    expect(
+      new Set(PREDEFINED_HEARING_PROFILES.map((profile) => profile.id)).size,
+    ).toBe(3);
+    expect(
+      new Set(PREDEFINED_HEARING_PROFILES.map((profile) => profile.displayName))
+        .size,
+    ).toBe(3);
+    expect(Object.isFrozen(PREDEFINED_HEARING_PROFILES)).toBe(true);
+
+    for (const profile of PREDEFINED_HEARING_PROFILES) {
+      expect(profile.classification).toBe("synthetic-illustrative");
+      expect(Object.isFrozen(profile)).toBe(true);
+      expect(Object.isFrozen(profile.rightThresholdsDbHl)).toBe(true);
+      expect(Object.isFrozen(profile.leftThresholdsDbHl)).toBe(true);
+    }
+  });
+
+  it("keeps every fixture on the approved grid, bounds and 5 dB step", () => {
+    const signatures = new Set<string>();
+
+    for (const profile of PREDEFINED_HEARING_PROFILES) {
+      const values = [
+        ...thresholdValues(profile.rightThresholdsDbHl),
+        ...thresholdValues(profile.leftThresholdsDbHl),
+      ];
+
+      for (const value of values) {
+        expect(Number.isFinite(value)).toBe(true);
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(100);
+        expect(value % 5).toBe(0);
+      }
+
+      signatures.add(values.join(","));
+    }
+
+    expect(signatures.size).toBe(3);
+  });
+
+  it("confirms exact fixture values without mutation and shares the manual shape", () => {
+    const manual = confirmedProfile();
+
+    for (const fixture of PREDEFINED_HEARING_PROFILES) {
+      const before = JSON.stringify(fixture);
+      const confirmed = confirmPredefinedProfile(fixture.id, 0);
+
+      expect(confirmed.sourceType).toBe("predefined");
+      expect(confirmed.predefinedProfileId).toBe(fixture.id);
+      expect(confirmed.displayName).toBe(fixture.displayName);
+      expect(confirmed.rightThresholdsDbHl).toEqual(
+        fixture.rightThresholdsDbHl,
+      );
+      expect(confirmed.leftThresholdsDbHl).toEqual(fixture.leftThresholdsDbHl);
+      expect(Object.keys(confirmed).sort()).toEqual(
+        Object.keys(manual).sort(),
+      );
+      expect(JSON.stringify(fixture)).toBe(before);
+    }
+  });
+
+  it("uses the same deterministic same-source support pipeline for every fixture", () => {
+    for (const fixture of PREDEFINED_HEARING_PROFILES) {
+      const profile = confirmPredefinedProfile(fixture.id, 0);
+      const first = createComparisonPlan(profile, SOURCE_IDENTITY);
+      const second = createComparisonPlan(profile, SOURCE_IDENTITY);
+
+      expect(first).toEqual(second);
+      expect(first.profileId).toBe(profile.profileId);
+      expect(first.sourceIdentity).toBe(SOURCE_IDENTITY);
+
+      for (const supportMode of [
+        "none",
+        "left-one-sided",
+        "bilateral",
+      ] as const) {
+        const result = resultForSupportMode(first, supportMode);
+
+        expect(result.sourceIdentity).toBe(SOURCE_IDENTITY);
+        expect(result.resultIdentity).toBe(
+          resultForSupportMode(second, supportMode).resultIdentity,
+        );
+        expect(
+          result.rightFilters.map((filter) => filter.inputThresholdDbHl),
+        ).toEqual(thresholdValues(fixture.rightThresholdsDbHl));
+        expect(
+          result.leftFilters.map((filter) => filter.inputThresholdDbHl),
+        ).toEqual(thresholdValues(fixture.leftThresholdsDbHl));
+      }
+    }
   });
 });
 
@@ -318,6 +449,122 @@ describe("genuine support progression", () => {
 });
 
 describe("canonical experience state", () => {
+  it("confirms only the canonically selected predefined profile", () => {
+    let state = createInitialExperienceState();
+    state = experienceReducer(state, {
+      type: "profile-entry-selected",
+      entryOption: "flat-hearing-loss",
+    });
+    state = experienceReducer(state, {
+      type: "predefined-profile-confirmed",
+      profileId: "flat-hearing-loss",
+      sourceIdentity: SOURCE_IDENTITY,
+    });
+
+    expect(state.selectedProfileEntry).toBe("flat-hearing-loss");
+    expect(state.confirmedProfile).toMatchObject({
+      sourceType: "predefined",
+      predefinedProfileId: "flat-hearing-loss",
+      displayName: "Flat hearing loss",
+    });
+    expect(state.comparisonPlan?.profileId).toBe(
+      state.confirmedProfile?.profileId,
+    );
+    expect(projectVisibleExperienceState(state).profile).toContain(
+      "Flat hearing loss confirmed",
+    );
+
+    const selectedOther = experienceReducer(createInitialExperienceState(), {
+      type: "profile-entry-selected",
+      entryOption: "high-frequency-hearing-loss",
+    });
+    const mismatched = experienceReducer(selectedOther, {
+      type: "predefined-profile-confirmed",
+      profileId: "flat-hearing-loss",
+      sourceIdentity: SOURCE_IDENTITY,
+    });
+
+    expect(mismatched.failure?.code).toBe("invalid-transition");
+    expect(mismatched.confirmedProfile).toBeNull();
+  });
+
+  it("invalidates stale output when entry changes and preserves the manual draft", () => {
+    let state = createInitialExperienceState();
+    state = experienceReducer(state, {
+      type: "manual-value-changed",
+      ear: "right",
+      frequency: "4000",
+      value: "55",
+    });
+    state = experienceReducer(state, {
+      type: "profile-entry-selected",
+      entryOption: "high-frequency-hearing-loss",
+    });
+    state = experienceReducer(state, {
+      type: "predefined-profile-confirmed",
+      profileId: "high-frequency-hearing-loss",
+      sourceIdentity: SOURCE_IDENTITY,
+    });
+    state = experienceReducer(state, {
+      type: "support-mode-changed",
+      supportMode: "bilateral",
+    });
+    state = experienceReducer(state, {
+      type: "low-volume-acknowledgement-changed",
+      acknowledged: true,
+    });
+    state = experienceReducer(state, { type: "source-load-started" });
+    state = experienceReducer(state, {
+      type: "source-ready",
+      sourceIdentity: SOURCE_IDENTITY,
+      sampleRate: 24000,
+      frameCount: 1536000,
+      durationSeconds: 64,
+    });
+    state = experienceReducer(state, {
+      type: "render-started",
+      mode: "simulated",
+    });
+    const resultIdentity = currentTransformedResult(state)!.resultIdentity;
+    state = experienceReducer(state, {
+      type: "playback-started",
+      mode: "simulated",
+      supportMode: "bilateral",
+      sourceIdentity: SOURCE_IDENTITY,
+      resultIdentity,
+      peakDbFs: -9,
+    });
+
+    state = experienceReducer(state, {
+      type: "profile-entry-selected",
+      entryOption: "asymmetric-hearing-loss",
+    });
+
+    expect(state.selectedProfileEntry).toBe("asymmetric-hearing-loss");
+    expect(state.confirmedProfile).toBeNull();
+    expect(state.comparisonPlan).toBeNull();
+    expect(state.supportMode).toBe("none");
+    expect(state.renders.reference.status).toBe("idle");
+    expect(state.renders.simulated.status).toBe("idle");
+    expect(state.playback.status).toBe("stopped");
+    expect(projectVisibleExperienceState(state).profile).toBe(
+      "Asymmetric hearing loss: confirmation required.",
+    );
+
+    state = experienceReducer(state, {
+      type: "profile-entry-selected",
+      entryOption: "manual",
+    });
+    state = experienceReducer(state, {
+      type: "manual-profile-confirmed",
+      sourceIdentity: SOURCE_IDENTITY,
+    });
+
+    expect(state.confirmedProfile?.sourceType).toBe("manual");
+    expect(state.confirmedProfile?.rightThresholdsDbHl["4000"]).toBe(55);
+    expect(state.confirmedProfile?.predefinedProfileId).toBeNull();
+  });
+
   it("accepts the valid confirmation, source, render and playback transition chain", () => {
     let state = confirmedState();
     expect(state.confirmedProfile?.leftThresholdsDbHl["4000"]).toBe(60);

@@ -18,8 +18,12 @@ import {
 } from "../core/experience";
 import {
   FREQUENCY_GRID_HZ,
+  MANUAL_PROFILE_ENTRY_LABEL,
+  PREDEFINED_HEARING_PROFILES,
   frequencyKey,
+  predefinedProfileById,
   type Ear,
+  type ProfileEntryOption,
 } from "../core/profile";
 
 type CheckState = "idle" | "checking" | "ready" | "unavailable";
@@ -66,6 +70,10 @@ export default function HomePage() {
   const isPlaying = experience.playback.status === "playing";
   const controlsLocked =
     isRendering || isPlaying || experience.source.status === "loading";
+  const selectedPredefinedProfile =
+    experience.selectedProfileEntry === "manual"
+      ? null
+      : predefinedProfileById(experience.selectedProfileEntry);
 
   useEffect(
     () => () => {
@@ -109,9 +117,23 @@ export default function HomePage() {
     });
   }
 
-  function confirmManualProfile() {
+  function selectProfileEntry(entryOption: ProfileEntryOption) {
+    audioEngineRef.current?.stop();
+    dispatch({ type: "profile-entry-selected", entryOption });
+  }
+
+  function confirmSelectedProfile() {
+    if (experience.selectedProfileEntry === "manual") {
+      dispatch({
+        type: "manual-profile-confirmed",
+        sourceIdentity: FAMILY_DINNER_SOURCE_ID,
+      });
+      return;
+    }
+
     dispatch({
-      type: "manual-profile-confirmed",
+      type: "predefined-profile-confirmed",
+      profileId: experience.selectedProfileEntry,
       sourceIdentity: FAMILY_DINNER_SOURCE_ID,
     });
   }
@@ -230,71 +252,178 @@ export default function HomePage() {
         </p>
       </header>
 
-      <section aria-labelledby="manual-profile-heading">
+      <section aria-labelledby="profile-entry-heading">
         <p className="step-label">Step 1</p>
-        <h2 id="manual-profile-heading">Synthetic manual test profile</h2>
-        <div className="explanation">
-          <p>
-            An audiogram records a threshold for each ear across pitches from
-            lower to higher frequency. The values below are synthetic dB HL
-            inputs—not playback-volume settings.
-          </p>
-          <p>
-            A higher value applies more illustrative attenuation around that
-            frequency. This cannot reproduce an individual&apos;s perception,
-            diagnose a condition, or recommend treatment or hearing support.
-          </p>
-        </div>
+        <h2 id="profile-entry-heading">Choose a profile entry</h2>
+        <p>
+          Choose one of three fixed synthetic examples or enter an audiogram.
+          Every option uses the same deterministic transformation, support and
+          browser-audio pipeline.
+        </p>
+        <p>
+          The named profiles are illustrative examples—not diagnoses—and do not
+          represent expected individual perception.
+        </p>
 
-        <div className="table-scroll">
-          <table>
-            <caption>
-              Edit the right and left values separately, then confirm the exact
-              profile.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Frequency</th>
-                <th scope="col">Right ear (dB HL)</th>
-                <th scope="col">Left ear (dB HL)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {FREQUENCY_GRID_HZ.map((frequency) => {
-                const key = frequencyKey(frequency);
+        <fieldset className="profile-selector" disabled={controlsLocked}>
+          <legend>Profile entry</legend>
+          <div className="profile-options">
+            {PREDEFINED_HEARING_PROFILES.map((profile) => (
+              <label key={profile.id}>
+                <input
+                  type="radio"
+                  name="profile-entry"
+                  value={profile.id}
+                  checked={experience.selectedProfileEntry === profile.id}
+                  onChange={() => selectProfileEntry(profile.id)}
+                />
+                <span>{profile.displayName}</span>
+              </label>
+            ))}
+            <label>
+              <input
+                type="radio"
+                name="profile-entry"
+                value="manual"
+                checked={experience.selectedProfileEntry === "manual"}
+                onChange={() => selectProfileEntry("manual")}
+              />
+              <span>{MANUAL_PROFILE_ENTRY_LABEL}</span>
+            </label>
+          </div>
+        </fieldset>
 
-                return (
-                  <tr key={frequency}>
-                    <th scope="row">{frequency >= 1000 ? `${frequency / 1000} kHz` : `${frequency} Hz`}</th>
-                    {(["right", "left"] as const).map((ear) => (
-                      <td key={ear}>
-                        <input
-                          aria-label={`${ear} ear at ${frequency} Hz`}
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="5"
-                          inputMode="numeric"
-                          value={experience.manualDraft[ear][key]}
-                          disabled={controlsLocked}
-                          onChange={(event) =>
-                            updateManualValue(ear, frequency, event.target.value)
-                          }
-                        />
-                      </td>
-                    ))}
+        {selectedPredefinedProfile ? (
+          <>
+            <p>
+              Review the exact synthetic right- and left-ear values before
+              confirming this illustrative profile.
+            </p>
+            <div className="table-scroll">
+              <table>
+                <caption>
+                  {selectedPredefinedProfile.displayName}: exact fixed synthetic
+                  thresholds
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Frequency</th>
+                    <th scope="col">Right ear (dB HL)</th>
+                    <th scope="col">Left ear (dB HL)</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {FREQUENCY_GRID_HZ.map((frequency) => {
+                    const key = frequencyKey(frequency);
 
-        {visible.lastEdit ? <p className="state-line">{visible.lastEdit}</p> : null}
+                    return (
+                      <tr key={frequency}>
+                        <th scope="row">
+                          {frequency >= 1000
+                            ? `${frequency / 1000} kHz`
+                            : `${frequency} Hz`}
+                        </th>
+                        <td>
+                          {selectedPredefinedProfile.rightThresholdsDbHl[key]}
+                        </td>
+                        <td>
+                          {selectedPredefinedProfile.leftThresholdsDbHl[key]}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <button
+              type="button"
+              onClick={confirmSelectedProfile}
+              disabled={controlsLocked}
+            >
+              Confirm {selectedPredefinedProfile.displayName}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="explanation">
+              <p>
+                An audiogram records a threshold for each ear across pitches
+                from lower to higher frequency. The values below are synthetic
+                dB HL inputs—not playback-volume settings.
+              </p>
+              <p>
+                A higher value applies more illustrative attenuation around that
+                frequency. This cannot reproduce an individual&apos;s
+                perception, diagnose a condition, or recommend treatment or
+                hearing support.
+              </p>
+            </div>
 
-        <button type="button" onClick={confirmManualProfile} disabled={controlsLocked}>
-          Confirm exact manual profile
-        </button>
+            <div className="table-scroll">
+              <table>
+                <caption>
+                  Edit the right and left values separately, then confirm the
+                  exact profile.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Frequency</th>
+                    <th scope="col">Right ear (dB HL)</th>
+                    <th scope="col">Left ear (dB HL)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {FREQUENCY_GRID_HZ.map((frequency) => {
+                    const key = frequencyKey(frequency);
+
+                    return (
+                      <tr key={frequency}>
+                        <th scope="row">
+                          {frequency >= 1000
+                            ? `${frequency / 1000} kHz`
+                            : `${frequency} Hz`}
+                        </th>
+                        {(["right", "left"] as const).map((ear) => (
+                          <td key={ear}>
+                            <input
+                              aria-label={`${ear} ear at ${frequency} Hz`}
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="5"
+                              inputMode="numeric"
+                              value={experience.manualDraft[ear][key]}
+                              disabled={controlsLocked}
+                              onChange={(event) =>
+                                updateManualValue(
+                                  ear,
+                                  frequency,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {visible.lastEdit ? (
+              <p className="state-line">{visible.lastEdit}</p>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={confirmSelectedProfile}
+              disabled={controlsLocked}
+            >
+              Confirm exact manual profile
+            </button>
+          </>
+        )}
         <p className="state-line">{visible.profile}</p>
         {visible.failure ? (
           <p className="error-message" role="alert">
