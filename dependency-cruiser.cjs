@@ -28,6 +28,13 @@ module.exports = {
       to: { path: "^src/browser/" },
     },
     {
+      name: "no-browser-adapter-to-composition",
+      comment: "Browser adapters must not depend on the React composition layer.",
+      severity: "error",
+      from: { path: "^src/browser/" },
+      to: { path: "^src/app/" },
+    },
+    {
       name: "no-pure-core-to-outer-layers",
       comment: "Pure contracts and core logic must not import composition or adapter layers.",
       severity: "error",
@@ -35,20 +42,33 @@ module.exports = {
       to: { path: "^src/(app|browser|server)/" },
     },
     {
+      name: "no-composition-owned-transformation-or-safety",
+      comment: "The page may compose the core and audio adapter but must not own transformation or safety rules.",
+      severity: "error",
+      from: { path: "^src/app/page\\.tsx$" },
+      to: { path: "^src/core/(transformation|safety)\\.ts$" },
+    },
+    {
       name: "no-runtime-dev-dependencies",
       comment: "Production source must not import development-only packages.",
       severity: "error",
-      from: { path: "^src/" },
+      from: {
+        path: "^src/",
+        pathNot: "\\.(test|spec)\\.[cm]?[jt]sx?$",
+      },
       to: { dependencyTypes: ["npm-dev"] },
     },
     {
       name: "no-unapproved-runtime-packages",
-      comment: "Phase 9 runtime source may import only Next.js, React and React DOM packages.",
+      comment: "Increment 10A runtime source may import only the approved framework packages and Zod.",
       severity: "error",
-      from: { path: "^src/" },
+      from: {
+        path: "^src/",
+        pathNot: "\\.(test|spec)\\.[cm]?[jt]sx?$",
+      },
       to: {
         dependencyTypes: ["npm", "npm-optional", "npm-peer"],
-        pathNot: "^node_modules/(next|react|react-dom)(/|$)",
+        pathNot: "^node_modules/(next|react|react-dom|zod)(/|$)",
       },
     },
   ],

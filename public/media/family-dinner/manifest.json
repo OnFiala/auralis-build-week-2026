@@ -1,0 +1,808 @@
+{
+  "schema": "auralis-acoustic-scene-manifest-review-v1",
+  "status": "approved synthetic media package for Increment 10A",
+  "sourceIdentity": "auralis-family-dinner-greenhouse-v1",
+  "sceneVersion": "1.0.0",
+  "classification": "original synthetic generated media",
+  "generatedAt": "2026-07-17T15:11:50.906529+00:00",
+  "scene": {
+    "title": "Greenhouse Plans After Dinner",
+    "concept": "Three fictional adult relatives finish dinner while planning a Saturday repair of their neighborhood greenhouse. A fictional local evening-news bulletin and restrained kitchen-room ambience create competing but intelligible background sound.",
+    "setting": "fictional family dining room adjoining a kitchen",
+    "durationSeconds": 64.0,
+    "sampleRate": 24000,
+    "channels": 1,
+    "channelLayout": "mono stems; browser adapter owns spatial placement",
+    "frameCount": 1536000,
+    "focusSourceId": "source-family-mara"
+  },
+  "manifestAuthoring": {
+    "requestedModelRole": "GPT-5.6 Sol",
+    "executionChannel": "primary Codex task under owner subscription",
+    "modelApiUsed": false,
+    "runtimeModelIdEvidence": "not exposed by the Codex task host"
+  },
+  "separateValidationPass": {
+    "requestedModel": "gpt-5.6-sol",
+    "status": "GO",
+    "executionChannel": "independent Codex subagent; no model API",
+    "validatedOn": "2026-07-17",
+    "checksPassed": 151,
+    "requiredCorrections": []
+  },
+  "originAndRights": {
+    "thirdPartySource": "none",
+    "externalDatasets": false,
+    "externalSamples": false,
+    "stockAudio": false,
+    "humanRecordings": false,
+    "music": false,
+    "realTelevisionContent": false,
+    "scriptOrigin": "original text authored for Auralis in the primary Codex task",
+    "voiceOrigin": "OpenAI built-in artificial voices",
+    "environmentOrigin": "deterministic procedural synthesis",
+    "licenseBasis": "No third-party media licence applies. OpenAI-generated output use remains subject to applicable OpenAI terms.",
+    "copyrightGuaranteed": false,
+    "uniquenessGuaranteed": false,
+    "ownerReviewRequired": true,
+    "aiDisclosureRequired": true
+  },
+  "generation": {
+    "speechModel": "tts-1-hd",
+    "speechEndpoint": "/v1/audio/speech",
+    "speechCalls": 14,
+    "inputCharacterCount": 1364,
+    "expectedListPriceUsd": 0.04092,
+    "automaticRetries": 0,
+    "generationRequestsSha256": "04ccda17f384131895e687379994c6a4db5dfc8fd399ff5f347b681a927d693f",
+    "rawUtterances": [
+      {
+        "utteranceId": "family-01",
+        "file": "01-mara-nova.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "nova",
+        "inputCharacterCount": 138,
+        "scriptSha256": "54ffb9c4cee76cf10fbbec4f8ef143c34a90905cb130f49fe9a9bfcd62c9add0",
+        "generationRequestSha256": "1fba6778943b61ff67b1a20f27c9d973a1933c8228dff3d3f92d629268086626",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 8.45,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 202800,
+        "sha256": "a303d9a46310b1566d917cf6dbd2c656363f9e1f370f419fcc10c2eb719b5978",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-02",
+        "file": "02-jonah-onyx.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "onyx",
+        "inputCharacterCount": 61,
+        "scriptSha256": "169023c7b4dc3cf30784b54de075b90645ea3cb41743b3123944f605285dd3dc",
+        "generationRequestSha256": "4d8e37e2262f179cd9a70ad450c40b6753bc666d8158e232094dfbf41234c8d4",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 3.8,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 91200,
+        "sha256": "60df8c8e1b945c7230df47bf919da27c84e7efe762ceb4aff1552d46ccbe860a",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-03",
+        "file": "03-lena-shimmer.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "shimmer",
+        "inputCharacterCount": 65,
+        "scriptSha256": "f976926ce4e2c1439c4f98eaf03b6b2acdb9574d42cf25b09f4025feb1eb33d7",
+        "generationRequestSha256": "8c9d4ee3dd531f5ef2d0d9ced41e7681367c10db310f66152894af5b0e625b1b",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 4.025,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 96600,
+        "sha256": "aab6d7e619c17b82ebecfa88b4d70183fee427d611ba9446f1a9a041b6ea2223",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-04",
+        "file": "04-mara-nova.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "nova",
+        "inputCharacterCount": 86,
+        "scriptSha256": "d447c45271a46d0d808415ed7b0d79bad1a5fb7672bd8e5f334c8b68f37a254d",
+        "generationRequestSha256": "38664b509dadd90515386aeffa247bd368792d2b9838b25263c7605f6c224989",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 5.025,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 120600,
+        "sha256": "2c21bf74e0fef3d931362b6d6ac85d8db0283d19300aa8194843c93698025ccd",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-05",
+        "file": "05-jonah-onyx.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "onyx",
+        "inputCharacterCount": 67,
+        "scriptSha256": "6194fe1840e52bf98e2ab267429356b4c79ba305ba7673ed57e56c7b2166b062",
+        "generationRequestSha256": "396dc20d3ac70acb7ba6442f7439f3571f05fc160f7685b081fbcd0f4979f704",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 4.125,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 99000,
+        "sha256": "48129c417084e4680edd75e28cfa1f0c11dbbe338c8a72fd6486628f0c51692e",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-06",
+        "file": "06-lena-shimmer.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "shimmer",
+        "inputCharacterCount": 77,
+        "scriptSha256": "97bd540df680733cd610ba99240657c9bfd15f2f67e3d1554752a5289dfc7e3a",
+        "generationRequestSha256": "075fd8677580795ae09e5fbcf3f69f92876ec5e793f1faec59eeafb4873cae5e",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 4.7375,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 113700,
+        "sha256": "66660249bbafad59e91cd910d7dac435c4598f2692a1bcaa6b3361b82b39f622",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-07",
+        "file": "07-mara-nova.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "nova",
+        "inputCharacterCount": 108,
+        "scriptSha256": "63cf197edf763ef0b2a08ae5b945e87bb8255b82ef2f09dd97c84f7fbcbbb989",
+        "generationRequestSha256": "bac451046a7ded562ae82ce5f0be004aca653f2a881f91d9e40fa10dc3fb4959",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 6.1375,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 147300,
+        "sha256": "2b8044cb3abe03a295a386b3bc46989ac636a1a081b58d55aa7c7a4a4ea2625c",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-08",
+        "file": "08-jonah-onyx.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "onyx",
+        "inputCharacterCount": 46,
+        "scriptSha256": "7db90c5c99e3fb8bf14701252a1f64cd599033c4c8608da16b9a2cbc3aba5899",
+        "generationRequestSha256": "5478f4331eafabb730c90c01a6a07ef0b1ad13027e1ec14ef938baaaabfd0c7b",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 2.8,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 67200,
+        "sha256": "398d1963c564f46ac655851c09479d6c04aade9e9b72444cde3b1f1586104fe6",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-09",
+        "file": "09-mara-nova.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "nova",
+        "inputCharacterCount": 53,
+        "scriptSha256": "9308ebda3789c2d2e454e699e129092ba77a59bf5016178532cc556b12c8216d",
+        "generationRequestSha256": "2cf8f2b311c64494ab6b7c75ab005306d980b37a712c23e612485096581a50ca",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 3.2125,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 77100,
+        "sha256": "326c96b460dbc35bd45d6580c1bfd395e5c33f973b61d2264a6eb7e09100fdbf",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-10",
+        "file": "10-lena-shimmer.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "shimmer",
+        "inputCharacterCount": 78,
+        "scriptSha256": "5355aa3e7f88a394d982bffecff94d127bda468ff8a8c212703174b830ff4a3d",
+        "generationRequestSha256": "e64c3ff93431ca2af0e374f3d7a6e00d735dddfc58955bebb12decbabacd020d",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 4.625,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 111000,
+        "sha256": "82366bada8f65a554483eb7ad3ce0670e4a9e096143adc305d00c6b305570e1d",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-11",
+        "file": "11-jonah-onyx.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "onyx",
+        "inputCharacterCount": 71,
+        "scriptSha256": "9794c884ba43f71f819242ca80804483a22d9717cc82aeffe868b162eae36717",
+        "generationRequestSha256": "bfd5dd4b3be5ce906bd853d14be07c5b14509835a4ddd990b6d45246b1fef749",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 4.35,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 104400,
+        "sha256": "208d7993514ae61609c8b083d4ebe6936a83f8be0244abe7def97f368be05afc",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "family-12",
+        "file": "12-mara-nova.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "nova",
+        "inputCharacterCount": 118,
+        "scriptSha256": "a4caf73806aacf5b119c1fff89d3bb616d1229d101b69a874ac5bb7b902d3772",
+        "generationRequestSha256": "f5349346be8a4e79a60cfa92422e4db495412f3f7010896d2c651592fb8557dd",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 7.2125,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 173100,
+        "sha256": "616593ad7417c9e6473bc397973f31fb39641756d89400e34e966a10354a058e",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "tv-01",
+        "file": "13-tv-echo.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "echo",
+        "inputCharacterCount": 190,
+        "scriptSha256": "581fe8ea4b3c04c209ffcc6b3c324b9c06d12ee568ad5fe902896c26ec4c42ab",
+        "generationRequestSha256": "d00b9139fa473e038439056ef81782d306841d68b311778d884b022d3a8dc2ab",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 11.8875,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 285300,
+        "sha256": "102a84dfa42c039d655c2cec7b3962b6c399a0741d4af69afcb1d75b93ba4b1a",
+        "thirdPartySource": "none"
+      },
+      {
+        "utteranceId": "tv-02",
+        "file": "14-tv-echo.wav",
+        "model": "tts-1-hd",
+        "artificialVoice": "echo",
+        "inputCharacterCount": 206,
+        "scriptSha256": "4db35b7f949b153fb3490c6b222c842c91a21739b332b2226d4f02323b8ae778",
+        "generationRequestSha256": "665b6bf577394c26a2ea5e24b4e0e8cf582857e2b9b76b0303c8ea1a0df945ca",
+        "generationInstructions": null,
+        "instructionSupport": "tts-1-hd does not support instructions; none were sent",
+        "durationSeconds": 12.625,
+        "sampleRate": 24000,
+        "channels": 1,
+        "frameCount": 303000,
+        "sha256": "8a6c2948d6d51b7c493a171c23cb9dbd7d97460ba417f88f9ddb99ddab8888ae",
+        "thirdPartySource": "none"
+      }
+    ],
+    "proceduralRoom": {
+      "recipeVersion": "auralis-procedural-room-v1",
+      "seed": 20260717,
+      "elements": [
+        "bounded filtered room-noise bed",
+        "filtered ventilation/HVAC noise",
+        "four enveloped noise bursts",
+        "eight damped multi-resonator dish/cutlery clinks",
+        "fixed early reflections and short room tails"
+      ],
+      "externalSamples": false,
+      "clinkTimesSeconds": [
+        5.8,
+        12.6,
+        19.4,
+        26.8,
+        35.1,
+        43.2,
+        51.5,
+        58.8
+      ],
+      "burstTimesSeconds": [
+        7.6,
+        21.9,
+        39.4,
+        55.7
+      ],
+      "recipeSha256": "a444e5e63f249ff34335ae8a821a68e1e09cb154603473179963ef212af2d18a"
+    }
+  },
+  "participants": [
+    {
+      "sourceId": "source-family-mara",
+      "name": "Mara",
+      "relationship": "fictional adult relative",
+      "voice": "nova",
+      "focusRole": "primary",
+      "position": {
+        "azimuthDegrees": -12,
+        "distanceMeters": 1.2,
+        "focusRole": "primary"
+      }
+    },
+    {
+      "sourceId": "source-family-jonah",
+      "name": "Jonah",
+      "relationship": "fictional adult relative",
+      "voice": "onyx",
+      "focusRole": "secondary",
+      "position": {
+        "azimuthDegrees": 32,
+        "distanceMeters": 1.8,
+        "focusRole": "secondary"
+      }
+    },
+    {
+      "sourceId": "source-family-lena",
+      "name": "Lena",
+      "relationship": "fictional adult relative",
+      "voice": "shimmer",
+      "focusRole": "secondary",
+      "position": {
+        "azimuthDegrees": -38,
+        "distanceMeters": 2.0,
+        "focusRole": "secondary"
+      }
+    },
+    {
+      "sourceId": "source-fictional-tv",
+      "name": "Fictional local news anchor",
+      "relationship": "synthetic background television source",
+      "voice": "echo",
+      "focusRole": "background",
+      "position": {
+        "azimuthDegrees": 58,
+        "distanceMeters": 3.5,
+        "focusRole": "background"
+      }
+    }
+  ],
+  "timeline": [
+    {
+      "utteranceId": "family-01",
+      "speaker": "Mara",
+      "sourceId": "source-family-mara",
+      "stem": "focused-speech.wav",
+      "text": "I checked the community greenhouse after work. The wind lifted two roof panels, but the seedlings we planted with the children stayed dry.",
+      "startFrame": 24000,
+      "speechEndFrameExclusive": 226800,
+      "renderEndFrameExclusive": 226800,
+      "startSeconds": 1.0,
+      "speechEndSeconds": 9.45,
+      "normalizationGain": 0.76279525,
+      "position": {
+        "azimuthDegrees": -12,
+        "distanceMeters": 1.2,
+        "focusRole": "primary"
+      }
+    },
+    {
+      "utteranceId": "family-02",
+      "speaker": "Jonah",
+      "sourceId": "source-family-jonah",
+      "stem": "overlapping-speech.wav",
+      "text": "Can the panels be fastened again, or does one need replacing?",
+      "startFrame": 240000,
+      "speechEndFrameExclusive": 331200,
+      "renderEndFrameExclusive": 331200,
+      "startSeconds": 10.0,
+      "speechEndSeconds": 13.8,
+      "normalizationGain": 0.41074652,
+      "position": {
+        "azimuthDegrees": 32,
+        "distanceMeters": 1.8,
+        "focusRole": "secondary"
+      }
+    },
+    {
+      "utteranceId": "family-03",
+      "speaker": "Lena",
+      "sourceId": "source-family-lena",
+      "stem": "overlapping-speech.wav",
+      "text": "One is cracked. I can collect a replacement before six on Friday.",
+      "startFrame": 322800,
+      "speechEndFrameExclusive": 419400,
+      "renderEndFrameExclusive": 419400,
+      "startSeconds": 13.45,
+      "speechEndSeconds": 17.475,
+      "normalizationGain": 0.4025111,
+      "position": {
+        "azimuthDegrees": -38,
+        "distanceMeters": 2.0,
+        "focusRole": "secondary"
+      }
+    },
+    {
+      "utteranceId": "family-04",
+      "speaker": "Mara",
+      "sourceId": "source-family-mara",
+      "stem": "focused-speech.wav",
+      "text": "The garden group is meeting Saturday at ten to secure the frame and fit the new panel.",
+      "startFrame": 430800,
+      "speechEndFrameExclusive": 551400,
+      "renderEndFrameExclusive": 551400,
+      "startSeconds": 17.95,
+      "speechEndSeconds": 22.975,
+      "normalizationGain": 0.85238454,
+      "position": {
+        "azimuthDegrees": -12,
+        "distanceMeters": 1.2,
+        "focusRole": "primary"
+      }
+    },
+    {
+      "utteranceId": "family-05",
+      "speaker": "Jonah",
+      "sourceId": "source-family-jonah",
+      "stem": "overlapping-speech.wav",
+      "text": "I have a cordless driver and a sturdy step ladder. I'll bring both.",
+      "startFrame": 561600,
+      "speechEndFrameExclusive": 660600,
+      "renderEndFrameExclusive": 660600,
+      "startSeconds": 23.4,
+      "speechEndSeconds": 27.525,
+      "normalizationGain": 0.4660259,
+      "position": {
+        "azimuthDegrees": 32,
+        "distanceMeters": 1.8,
+        "focusRole": "secondary"
+      }
+    },
+    {
+      "utteranceId": "family-06",
+      "speaker": "Lena",
+      "sourceId": "source-family-lena",
+      "stem": "overlapping-speech.wav",
+      "text": "I'll bring soup and label the seed trays, so nobody moves the early tomatoes.",
+      "startFrame": 651600,
+      "speechEndFrameExclusive": 765300,
+      "renderEndFrameExclusive": 765300,
+      "startSeconds": 27.15,
+      "speechEndSeconds": 31.8875,
+      "normalizationGain": 0.59506575,
+      "position": {
+        "azimuthDegrees": -38,
+        "distanceMeters": 2.0,
+        "focusRole": "secondary"
+      }
+    },
+    {
+      "utteranceId": "family-07",
+      "speaker": "Mara",
+      "sourceId": "source-family-mara",
+      "stem": "focused-speech.wav",
+      "text": "Please keep the tomato trays on the warm bench. The children need them for the school garden day next month.",
+      "startFrame": 775200,
+      "speechEndFrameExclusive": 922500,
+      "renderEndFrameExclusive": 922500,
+      "startSeconds": 32.3,
+      "speechEndSeconds": 38.4375,
+      "normalizationGain": 1.5606074,
+      "position": {
+        "azimuthDegrees": -12,
+        "distanceMeters": 1.2,
+        "focusRole": "primary"
+      }
+    },
+    {
+      "utteranceId": "family-08",
+      "speaker": "Jonah",
+      "sourceId": "source-family-jonah",
+      "stem": "overlapping-speech.wav",
+      "text": "The herb trays stay by the west window, right?",
+      "startFrame": 931200,
+      "speechEndFrameExclusive": 998400,
+      "renderEndFrameExclusive": 998400,
+      "startSeconds": 38.8,
+      "speechEndSeconds": 41.6,
+      "normalizationGain": 0.80640242,
+      "position": {
+        "azimuthDegrees": 32,
+        "distanceMeters": 1.8,
+        "focusRole": "secondary"
+      }
+    },
+    {
+      "utteranceId": "family-09",
+      "speaker": "Mara",
+      "sourceId": "source-family-mara",
+      "stem": "focused-speech.wav",
+      "text": "Right. Basil has blue labels; parsley has green ones.",
+      "startFrame": 1004400,
+      "speechEndFrameExclusive": 1081500,
+      "renderEndFrameExclusive": 1081500,
+      "startSeconds": 41.85,
+      "speechEndSeconds": 45.0625,
+      "normalizationGain": 1.23162343,
+      "position": {
+        "azimuthDegrees": -12,
+        "distanceMeters": 1.2,
+        "focusRole": "primary"
+      }
+    },
+    {
+      "utteranceId": "family-10",
+      "speaker": "Lena",
+      "sourceId": "source-family-lena",
+      "stem": "overlapping-speech.wav",
+      "text": "I'll text the group: replacement panel, tools, lunch, and a ten o'clock start.",
+      "startFrame": 1090800,
+      "speechEndFrameExclusive": 1201800,
+      "renderEndFrameExclusive": 1201800,
+      "startSeconds": 45.45,
+      "speechEndSeconds": 50.075,
+      "normalizationGain": 0.38295954,
+      "position": {
+        "azimuthDegrees": -38,
+        "distanceMeters": 2.0,
+        "focusRole": "secondary"
+      }
+    },
+    {
+      "utteranceId": "family-11",
+      "speaker": "Jonah",
+      "sourceId": "source-family-jonah",
+      "stem": "overlapping-speech.wav",
+      "text": "Add gloves. The cracked edge may be sharp, and rain is due after three.",
+      "startFrame": 1192800,
+      "speechEndFrameExclusive": 1297200,
+      "renderEndFrameExclusive": 1297200,
+      "startSeconds": 49.7,
+      "speechEndSeconds": 54.05,
+      "normalizationGain": 0.58612472,
+      "position": {
+        "azimuthDegrees": 32,
+        "distanceMeters": 1.8,
+        "focusRole": "secondary"
+      }
+    },
+    {
+      "utteranceId": "family-12",
+      "speaker": "Mara",
+      "sourceId": "source-family-mara",
+      "stem": "focused-speech.wav",
+      "text": "Good catch. I'll pack three pairs. If we start on time, we can secure the roof before the rain and still eat together.",
+      "startFrame": 1306800,
+      "speechEndFrameExclusive": 1479900,
+      "renderEndFrameExclusive": 1479900,
+      "startSeconds": 54.45,
+      "speechEndSeconds": 61.6625,
+      "normalizationGain": 0.72380783,
+      "position": {
+        "azimuthDegrees": -12,
+        "distanceMeters": 1.2,
+        "focusRole": "primary"
+      }
+    },
+    {
+      "utteranceId": "tv-01",
+      "speaker": "Fictional local news anchor",
+      "sourceId": "source-fictional-tv",
+      "stem": "television.wav",
+      "text": "Good evening. The town council has approved a weekend pilot that will keep the central market square car-free until dusk, giving local growers and craftspeople more room for Saturday stalls.",
+      "startFrame": 96000,
+      "speechEndFrameExclusive": 381300,
+      "renderEndFrameExclusive": 382668,
+      "startSeconds": 4.0,
+      "speechEndSeconds": 15.8875,
+      "normalizationGain": 0.27015835,
+      "position": {
+        "azimuthDegrees": 58,
+        "distanceMeters": 3.5,
+        "focusRole": "background"
+      }
+    },
+    {
+      "utteranceId": "tv-02",
+      "speaker": "Fictional local news anchor",
+      "sourceId": "source-fictional-tv",
+      "stem": "television.wav",
+      "text": "Also tonight, lighter winds should bring a clear, cool morning after brief showers. Volunteers will reopen the community garden at nine, with spare seedlings available for anyone starting a balcony planter.",
+      "startFrame": 816000,
+      "speechEndFrameExclusive": 1119000,
+      "renderEndFrameExclusive": 1120368,
+      "startSeconds": 34.0,
+      "speechEndSeconds": 46.625,
+      "normalizationGain": 0.22323255,
+      "position": {
+        "azimuthDegrees": 58,
+        "distanceMeters": 3.5,
+        "focusRole": "background"
+      }
+    }
+  ],
+  "overlapWindows": [
+    {
+      "startFrame": 322800,
+      "endFrame": 331200,
+      "durationFrames": 8400,
+      "participants": [
+        "family-02",
+        "family-03"
+      ],
+      "reason": "Natural answer anticipation without masking focused speech."
+    },
+    {
+      "startFrame": 651600,
+      "endFrame": 660600,
+      "durationFrames": 9000,
+      "participants": [
+        "family-05",
+        "family-06"
+      ],
+      "reason": "Cooperative turn-taking between secondary family voices."
+    },
+    {
+      "startFrame": 1192800,
+      "endFrame": 1201800,
+      "durationFrames": 9000,
+      "participants": [
+        "family-10",
+        "family-11"
+      ],
+      "reason": "A brief practical interjection between secondary family voices."
+    }
+  ],
+  "rendering": {
+    "clipFadeMilliseconds": 5,
+    "focusedUtteranceTargetPeakDbFS": -9.0,
+    "secondaryUtteranceTargetPeakDbFS": -12.0,
+    "televisionHighPassHz": 180.0,
+    "televisionLowPassHz": 4300.0,
+    "televisionReflectionDelaysMilliseconds": [
+      29,
+      57
+    ],
+    "televisionReflectionGains": [
+      0.18,
+      0.1
+    ],
+    "televisionUtteranceTargetPeakDbFS": -17.0,
+    "stemPeakCapsDbFS": {
+      "focused-speech.wav": -9.0,
+      "overlapping-speech.wav": -9.0,
+      "television.wav": -15.0,
+      "kitchen-room.wav": -24.0
+    },
+    "referenceMixCeilingDbFS": -3.0,
+    "globalHeadroomGain": 1.0,
+    "referenceMixPeakDbFS": -8.586,
+    "timeStretching": false,
+    "speechTruncation": false,
+    "looping": false
+  },
+  "assets": [
+    {
+      "file": "focused-speech.wav",
+      "role": "primary important family speaker",
+      "durationSeconds": 64.0,
+      "sampleRate": 24000,
+      "channels": 1,
+      "sampleWidthBits": 16,
+      "frameCount": 1536000,
+      "peakLinear": 0.3548134,
+      "peakDbFS": -9.0,
+      "rmsDbFS": -31.608,
+      "sha256": "b89ee8301886270ecd42aff32ac7453766362f7d40abddf5ff4eb6e1b7cc4090",
+      "alignment": {
+        "startFrame": 0,
+        "endFrameExclusive": 1536000,
+        "commonSourceIdentity": "auralis-family-dinner-greenhouse-v1"
+      },
+      "thirdPartySource": "none",
+      "humanReviewStatus": "approved by human owner on 2026-07-17",
+      "aiDisclosureRequired": true
+    },
+    {
+      "file": "overlapping-speech.wav",
+      "role": "secondary family speakers and overlap",
+      "durationSeconds": 64.0,
+      "sampleRate": 24000,
+      "channels": 1,
+      "sampleWidthBits": 16,
+      "frameCount": 1536000,
+      "peakLinear": 0.25377703,
+      "peakDbFS": -11.911,
+      "rmsDbFS": -32.704,
+      "sha256": "8ad5deb134ed1ac8e58e71543c667a6d29ee803188352859513b675cf44c6f07",
+      "alignment": {
+        "startFrame": 0,
+        "endFrameExclusive": 1536000,
+        "commonSourceIdentity": "auralis-family-dinner-greenhouse-v1"
+      },
+      "thirdPartySource": "none",
+      "humanReviewStatus": "approved by human owner on 2026-07-17",
+      "aiDisclosureRequired": true
+    },
+    {
+      "file": "television.wav",
+      "role": "distant fictional evening-news background",
+      "durationSeconds": 64.0,
+      "sampleRate": 24000,
+      "channels": 1,
+      "sampleWidthBits": 16,
+      "frameCount": 1536000,
+      "peakLinear": 0.14125375,
+      "peakDbFS": -17.0,
+      "rmsDbFS": -42.642,
+      "sha256": "c27602110ff5b715efe026d499cb2ed8a3b1d4f6d3bbf8c3940df596eeea0a15",
+      "alignment": {
+        "startFrame": 0,
+        "endFrameExclusive": 1536000,
+        "commonSourceIdentity": "auralis-family-dinner-greenhouse-v1"
+      },
+      "thirdPartySource": "none",
+      "humanReviewStatus": "approved by human owner on 2026-07-17",
+      "aiDisclosureRequired": true
+    },
+    {
+      "file": "kitchen-room.wav",
+      "role": "deterministic procedural room ambience and foley",
+      "durationSeconds": 64.0,
+      "sampleRate": 24000,
+      "channels": 1,
+      "sampleWidthBits": 16,
+      "frameCount": 1536000,
+      "peakLinear": 0.06309573,
+      "peakDbFS": -24.0,
+      "rmsDbFS": -47.427,
+      "sha256": "5a86a24374fc85b682a0a894a682722ba20013ec4fdb6890cd801ce0e35dc5cb",
+      "alignment": {
+        "startFrame": 0,
+        "endFrameExclusive": 1536000,
+        "commonSourceIdentity": "auralis-family-dinner-greenhouse-v1"
+      },
+      "thirdPartySource": "none",
+      "humanReviewStatus": "approved by human owner on 2026-07-17",
+      "aiDisclosureRequired": true
+    }
+  ],
+  "safetyAndClaims": {
+    "illustrativeOnly": true,
+    "diagnosticClaim": false,
+    "prescriptiveClaim": false,
+    "prevalenceClaim": false,
+    "realPersonImitation": false,
+    "copyrightedOrTrademarkedContentIntended": false,
+    "digitalPeakValidated": true,
+    "finiteSamplesValidated": true,
+    "commonFrameCountValidated": true,
+    "commonSampleRateValidated": true,
+    "commonChannelLayoutValidated": true
+  },
+  "review": {
+    "pilotVoiceReview": {
+      "status": "approved by human owner",
+      "date": "2026-07-17",
+      "scope": [
+        "nova",
+        "onyx",
+        "shimmer",
+        "echo"
+      ]
+    },
+    "finalStemReview": {
+      "status": "approved by human owner",
+      "date": "2026-07-17",
+      "repositoryCopyAuthorized": true
+    }
+  }
+}

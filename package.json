@@ -12,13 +12,15 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "check:deps": "depcruise --config dependency-cruiser.cjs -- src tests",
+    "test:core": "vitest run src/core/core.test.ts",
     "test:smoke": "playwright test tests/smoke.spec.ts",
-    "check": "npm run typecheck && npm run check:deps && npm run build && npm run test:smoke"
+    "check": "npm run typecheck && npm run check:deps && npm run test:core && npm run build && npm run test:smoke"
   },
   "dependencies": {
     "next": "16.2.10",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
@@ -26,7 +28,8 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "dependency-cruiser": "18.1.0",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
   },
   "overrides": {
     "postcss": "8.5.10"
