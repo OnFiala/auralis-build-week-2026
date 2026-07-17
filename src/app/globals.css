@@ -227,6 +227,50 @@ button:disabled {
   max-width: 42rem;
 }
 
+.support-selector {
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.support-selector legend {
+  margin-bottom: 0.75rem;
+  font-weight: 750;
+}
+
+.support-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.support-options label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #9fb4ae;
+  border-radius: 0.6rem;
+  background: #fbfdfc;
+  cursor: pointer;
+}
+
+.support-options label:has(input:checked) {
+  border-color: #145f52;
+  background: #e3f3ee;
+  box-shadow: inset 0 0 0 1px #145f52;
+}
+
+.support-options input {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.support-selector:disabled label {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .acknowledgement {
   display: flex;
   gap: 0.75rem;

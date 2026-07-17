@@ -1,10 +1,38 @@
 {
   "schema": "auralis-acoustic-scene-manifest-review-v1",
-  "status": "approved synthetic media package for Increment 10A",
-  "sourceIdentity": "auralis-family-dinner-greenhouse-v1",
-  "sceneVersion": "1.0.0",
+  "status": "approved synthetic media package; kitchen-room v3 accepted for the first vertical slice with a required naturalness review before Phase 10 acceptance",
+  "sourceIdentity": "auralis-family-dinner-greenhouse:a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed",
+  "sceneVersion": "1.1.0",
+  "sourceIdentityDerivation": {
+    "algorithm": "sha256",
+    "sceneVersion": "1.1.0",
+    "digest": "a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed",
+    "orderedAssets": [
+      {
+        "file": "focused-speech.wav",
+        "sha256": "b89ee8301886270ecd42aff32ac7453766362f7d40abddf5ff4eb6e1b7cc4090",
+        "baseMixGain": 1.0
+      },
+      {
+        "file": "overlapping-speech.wav",
+        "sha256": "8ad5deb134ed1ac8e58e71543c667a6d29ee803188352859513b675cf44c6f07",
+        "baseMixGain": 1.0
+      },
+      {
+        "file": "television.wav",
+        "sha256": "c27602110ff5b715efe026d499cb2ed8a3b1d4f6d3bbf8c3940df596eeea0a15",
+        "baseMixGain": 1.0
+      },
+      {
+        "file": "kitchen-room.wav",
+        "sha256": "70ecf0cc6a58bccdb71a9d634f74d41897b4b6a1f6c6c60c6315f5b3a0819503",
+        "baseMixGain": 1.0
+      }
+    ]
+  },
   "classification": "original synthetic generated media",
   "generatedAt": "2026-07-17T15:11:50.906529+00:00",
+  "lastUpdatedAt": "2026-07-17T16:58:18Z",
   "scene": {
     "title": "Greenhouse Plans After Dinner",
     "concept": "Three fictional adult relatives finish dinner while planning a Saturday repair of their neighborhood greenhouse. A fictional local evening-news bulletin and restrained kitchen-room ambience create competing but intelligible background sound.",
@@ -27,8 +55,28 @@
     "status": "GO",
     "executionChannel": "independent Codex subagent; no model API",
     "validatedOn": "2026-07-17",
+    "scope": "initial v1.0.0 manifest and media plan; does not cover kitchen-room v3 naturalness",
     "checksPassed": 151,
     "requiredCorrections": []
+  },
+  "mediaRepairValidation": {
+    "increment": "10B",
+    "validatedOn": "2026-07-17",
+    "ownerListening": {
+      "naturalness": "accepted for the first vertical slice; review required before Phase 10 acceptance",
+      "absenceOfObjectionableContinuousNoise": "PASS",
+      "familySceneSuitability": "PASS with the naturalness review requirement"
+    },
+    "objectiveChecks": {
+      "durationSeconds": 64.0,
+      "sampleRate": 24000,
+      "channels": 1,
+      "frameCount": 1536000,
+      "peakDbFS": -24.002,
+      "rmsDbFS": -51.353,
+      "continuousNoiseFloor": false,
+      "externalAssets": false
+    }
   },
   "originAndRights": {
     "thirdPartySource": "none",
@@ -296,33 +344,43 @@
       }
     ],
     "proceduralRoom": {
-      "recipeVersion": "auralis-procedural-room-v1",
-      "seed": 20260717,
+      "recipeVersion": "auralis-procedural-room-v3",
+      "seed": 20260719,
       "elements": [
-        "bounded filtered room-noise bed",
-        "filtered ventilation/HVAC noise",
-        "four enveloped noise bursts",
-        "eight damped multi-resonator dish/cutlery clinks",
-        "fixed early reflections and short room tails"
+        "event-specific inharmonic modal resonators for cutlery placement",
+        "paired synthetic glass-contact resonances",
+        "ceramic plate contact and ring",
+        "short bounded early reflections",
+        "digital silence between events; no continuous noise bed or HVAC"
       ],
       "externalSamples": false,
-      "clinkTimesSeconds": [
-        5.8,
-        12.6,
-        19.4,
-        26.8,
-        35.1,
-        43.2,
-        51.5,
-        58.8
+      "eventTimeline": [
+        {
+          "timeSeconds": 6.2,
+          "action": "cutlery-placement"
+        },
+        {
+          "timeSeconds": 15.4,
+          "action": "glass-clink"
+        },
+        {
+          "timeSeconds": 25.7,
+          "action": "plate-set-down"
+        },
+        {
+          "timeSeconds": 36.8,
+          "action": "cutlery-placement"
+        },
+        {
+          "timeSeconds": 47.3,
+          "action": "glass-clink"
+        },
+        {
+          "timeSeconds": 57.6,
+          "action": "plate-set-down"
+        }
       ],
-      "burstTimesSeconds": [
-        7.6,
-        21.9,
-        39.4,
-        55.7
-      ],
-      "recipeSha256": "a444e5e63f249ff34335ae8a821a68e1e09cb154603473179963ef212af2d18a"
+      "recipeSha256": "15d2ae9e1501dbf1f17324e886608d20ba5e5d380a8a40808c59dcd4313df1f7"
     }
   },
   "participants": [
@@ -684,7 +742,7 @@
     },
     "referenceMixCeilingDbFS": -3.0,
     "globalHeadroomGain": 1.0,
-    "referenceMixPeakDbFS": -8.586,
+    "referenceMixPeakDbFS": -8.621,
     "timeStretching": false,
     "speechTruncation": false,
     "looping": false
@@ -705,7 +763,7 @@
       "alignment": {
         "startFrame": 0,
         "endFrameExclusive": 1536000,
-        "commonSourceIdentity": "auralis-family-dinner-greenhouse-v1"
+        "commonSourceIdentity": "auralis-family-dinner-greenhouse:a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed"
       },
       "thirdPartySource": "none",
       "humanReviewStatus": "approved by human owner on 2026-07-17",
@@ -726,7 +784,7 @@
       "alignment": {
         "startFrame": 0,
         "endFrameExclusive": 1536000,
-        "commonSourceIdentity": "auralis-family-dinner-greenhouse-v1"
+        "commonSourceIdentity": "auralis-family-dinner-greenhouse:a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed"
       },
       "thirdPartySource": "none",
       "humanReviewStatus": "approved by human owner on 2026-07-17",
@@ -747,7 +805,7 @@
       "alignment": {
         "startFrame": 0,
         "endFrameExclusive": 1536000,
-        "commonSourceIdentity": "auralis-family-dinner-greenhouse-v1"
+        "commonSourceIdentity": "auralis-family-dinner-greenhouse:a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed"
       },
       "thirdPartySource": "none",
       "humanReviewStatus": "approved by human owner on 2026-07-17",
@@ -761,17 +819,24 @@
       "channels": 1,
       "sampleWidthBits": 16,
       "frameCount": 1536000,
-      "peakLinear": 0.06309573,
-      "peakDbFS": -24.0,
-      "rmsDbFS": -47.427,
-      "sha256": "5a86a24374fc85b682a0a894a682722ba20013ec4fdb6890cd801ce0e35dc5cb",
+      "peakLinear": 0.06307983,
+      "peakDbFS": -24.002,
+      "rmsDbFS": -51.353,
+      "noiseFloorCharacteristic": "digital silence between events; ffmpeg astats reported -inf dBFS",
+      "sha256": "70ecf0cc6a58bccdb71a9d634f74d41897b4b6a1f6c6c60c6315f5b3a0819503",
+      "generatedAt": "2026-07-17T16:58:18Z",
       "alignment": {
         "startFrame": 0,
         "endFrameExclusive": 1536000,
-        "commonSourceIdentity": "auralis-family-dinner-greenhouse-v1"
+        "commonSourceIdentity": "auralis-family-dinner-greenhouse:a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed"
       },
       "thirdPartySource": "none",
-      "humanReviewStatus": "approved by human owner on 2026-07-17",
+      "humanReviewStatus": "approved by human owner for the first vertical slice on 2026-07-17; naturalness review required before Phase 10 acceptance",
+      "naturalnessReview": {
+        "status": "required",
+        "trigger": "before Phase 10 acceptance",
+        "reason": "Owner accepted the procedural events for the first vertical slice but reported that their real-world source remains difficult to identify."
+      },
       "aiDisclosureRequired": true
     }
   ],

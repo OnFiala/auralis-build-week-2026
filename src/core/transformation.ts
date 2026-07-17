@@ -13,6 +13,9 @@ export const TRANSFORMATION_FILTER_Q = 1;
 export const TRANSFORMATION_DB_PER_DB_HL = -0.24;
 export const TRANSFORMATION_MIN_GAIN_DB = -24;
 export const TRANSFORMATION_MAX_GAIN_DB = 0;
+export const SUPPORT_ALGORITHM_VERSION = "auralis-partial-support-v1";
+export const SUPPORT_COMPENSATION_FRACTION = 0.5;
+export const SUPPORT_MAX_COMPENSATION_DB = 9;
 
 export type SpectralFilter = Readonly<{
   frequencyHz: number;
@@ -22,9 +25,20 @@ export type SpectralFilter = Readonly<{
 }>;
 
 export type ComparisonMode = "reference" | "simulated";
+export type SupportMode = "none" | "left-one-sided" | "bilateral";
+
+export type TransformedResultPlan = Readonly<{
+  mode: "simulated";
+  supportMode: SupportMode;
+  sourceIdentity: string;
+  resultIdentity: string;
+  leftFilters: readonly SpectralFilter[];
+  rightFilters: readonly SpectralFilter[];
+}>;
 
 export type ComparisonPlan = Readonly<{
   algorithmVersion: typeof TRANSFORMATION_ALGORITHM_VERSION;
+  supportAlgorithmVersion: typeof SUPPORT_ALGORITHM_VERSION;
   sourceIdentity: string;
   profileId: string;
   reference: Readonly<{
@@ -32,12 +46,10 @@ export type ComparisonPlan = Readonly<{
     sourceIdentity: string;
     resultIdentity: string;
   }>;
-  simulated: Readonly<{
-    mode: "simulated";
-    sourceIdentity: string;
-    resultIdentity: string;
-    leftFilters: readonly SpectralFilter[];
-    rightFilters: readonly SpectralFilter[];
+  simulated: TransformedResultPlan;
+  support: Readonly<{
+    "left-one-sided": TransformedResultPlan;
+    bilateral: TransformedResultPlan;
   }>;
   limitation: "illustrative-non-clinical";
 }>;
@@ -54,18 +66,37 @@ export function thresholdToGainDb(thresholdDbHl: number): number {
   );
 }
 
-function createEarFilters(profile: ConfirmedHearingProfile, ear: Ear): SpectralFilter[] {
+export function supportCompensationDb(thresholdDbHl: number): number {
+  return Math.min(
+    SUPPORT_MAX_COMPENSATION_DB,
+    Math.abs(thresholdToGainDb(thresholdDbHl)) * SUPPORT_COMPENSATION_FRACTION,
+  );
+}
+
+export function supportedThresholdToGainDb(thresholdDbHl: number): number {
+  return thresholdToGainDb(thresholdDbHl) + supportCompensationDb(thresholdDbHl);
+}
+
+function createEarFilters(
+  profile: ConfirmedHearingProfile,
+  ear: Ear,
+  supported: boolean,
+): SpectralFilter[] {
   const thresholds =
     ear === "left" ? profile.leftThresholdsDbHl : profile.rightThresholdsDbHl;
 
-  return FREQUENCY_GRID_HZ.map((frequencyHz) =>
-    Object.freeze({
+  return FREQUENCY_GRID_HZ.map((frequencyHz) => {
+    const inputThresholdDbHl = thresholds[frequencyKey(frequencyHz)];
+
+    return Object.freeze({
       frequencyHz,
       q: TRANSFORMATION_FILTER_Q,
-      inputThresholdDbHl: thresholds[frequencyKey(frequencyHz)],
-      gainDb: thresholdToGainDb(thresholds[frequencyKey(frequencyHz)]),
-    }),
-  );
+      inputThresholdDbHl,
+      gainDb: supported
+        ? supportedThresholdToGainDb(inputThresholdDbHl)
+        : thresholdToGainDb(inputThresholdDbHl),
+    });
+  });
 }
 
 function serializeFilters(filters: readonly SpectralFilter[]): string {
@@ -85,8 +116,14 @@ export function createComparisonPlan(
     throw new Error("A source identity is required.");
   }
 
-  const leftFilters = Object.freeze(createEarFilters(profile, "left"));
-  const rightFilters = Object.freeze(createEarFilters(profile, "right"));
+  const leftFilters = Object.freeze(createEarFilters(profile, "left", false));
+  const rightFilters = Object.freeze(createEarFilters(profile, "right", false));
+  const supportedLeftFilters = Object.freeze(
+    createEarFilters(profile, "left", true),
+  );
+  const supportedRightFilters = Object.freeze(
+    createEarFilters(profile, "right", true),
+  );
   const referenceIdentity = `reference-v1:${sourceIdentity}`;
   const simulatedIdentity = [
     TRANSFORMATION_ALGORITHM_VERSION,
@@ -95,9 +132,26 @@ export function createComparisonPlan(
     `L[${serializeFilters(leftFilters)}]`,
     `R[${serializeFilters(rightFilters)}]`,
   ].join("|");
+  const leftSupportIdentity = [
+    SUPPORT_ALGORITHM_VERSION,
+    "left-one-sided",
+    sourceIdentity,
+    profile.profileId,
+    `L[${serializeFilters(supportedLeftFilters)}]`,
+    `R[${serializeFilters(rightFilters)}]`,
+  ].join("|");
+  const bilateralIdentity = [
+    SUPPORT_ALGORITHM_VERSION,
+    "bilateral",
+    sourceIdentity,
+    profile.profileId,
+    `L[${serializeFilters(supportedLeftFilters)}]`,
+    `R[${serializeFilters(supportedRightFilters)}]`,
+  ].join("|");
 
   const plan = Object.freeze({
     algorithmVersion: TRANSFORMATION_ALGORITHM_VERSION,
+    supportAlgorithmVersion: SUPPORT_ALGORITHM_VERSION,
     sourceIdentity,
     profileId: profile.profileId,
     reference: Object.freeze({
@@ -107,10 +161,29 @@ export function createComparisonPlan(
     }),
     simulated: Object.freeze({
       mode: "simulated" as const,
+      supportMode: "none" as const,
       sourceIdentity,
       resultIdentity: simulatedIdentity,
       leftFilters,
       rightFilters,
+    }),
+    support: Object.freeze({
+      "left-one-sided": Object.freeze({
+        mode: "simulated" as const,
+        supportMode: "left-one-sided" as const,
+        sourceIdentity,
+        resultIdentity: leftSupportIdentity,
+        leftFilters: supportedLeftFilters,
+        rightFilters,
+      }),
+      bilateral: Object.freeze({
+        mode: "simulated" as const,
+        supportMode: "bilateral" as const,
+        sourceIdentity,
+        resultIdentity: bilateralIdentity,
+        leftFilters: supportedLeftFilters,
+        rightFilters: supportedRightFilters,
+      }),
     }),
     limitation: "illustrative-non-clinical" as const,
   });
@@ -119,14 +192,19 @@ export function createComparisonPlan(
   return plan;
 }
 
-function assertValidFilters(filters: readonly SpectralFilter[]): void {
+function assertValidFilters(
+  filters: readonly SpectralFilter[],
+  supported: boolean,
+): void {
   if (filters.length !== FREQUENCY_GRID_HZ.length) {
     throw new Error("The transformation plan does not cover the approved frequency grid.");
   }
 
   filters.forEach((filter, index) => {
     const expectedFrequency = FREQUENCY_GRID_HZ[index];
-    const expectedGain = thresholdToGainDb(filter.inputThresholdDbHl);
+    const expectedGain = supported
+      ? supportedThresholdToGainDb(filter.inputThresholdDbHl)
+      : thresholdToGainDb(filter.inputThresholdDbHl);
 
     if (
       filter.frequencyHz !== expectedFrequency ||
@@ -138,7 +216,7 @@ function assertValidFilters(filters: readonly SpectralFilter[]): void {
       !Number.isFinite(filter.gainDb) ||
       filter.gainDb < TRANSFORMATION_MIN_GAIN_DB ||
       filter.gainDb > TRANSFORMATION_MAX_GAIN_DB ||
-      Math.abs(filter.gainDb - expectedGain) > Number.EPSILON
+      Math.abs(filter.gainDb - expectedGain) > 1e-9
     ) {
       throw new Error("The transformation plan contains an unsafe or invalid filter.");
     }
@@ -146,28 +224,66 @@ function assertValidFilters(filters: readonly SpectralFilter[]): void {
 }
 
 export function assertValidComparisonPlan(plan: ComparisonPlan): void {
+  const transformedResults = [
+    plan.simulated,
+    plan.support["left-one-sided"],
+    plan.support.bilateral,
+  ];
+  const identities = [
+    plan.reference.resultIdentity,
+    ...transformedResults.map((result) => result.resultIdentity),
+  ];
+
   if (
     plan.algorithmVersion !== TRANSFORMATION_ALGORITHM_VERSION ||
+    plan.supportAlgorithmVersion !== SUPPORT_ALGORITHM_VERSION ||
     plan.sourceIdentity.trim() === "" ||
     plan.reference.sourceIdentity !== plan.sourceIdentity ||
-    plan.simulated.sourceIdentity !== plan.sourceIdentity ||
     plan.reference.mode !== "reference" ||
-    plan.simulated.mode !== "simulated" ||
     plan.reference.resultIdentity.trim() === "" ||
-    plan.simulated.resultIdentity.trim() === "" ||
-    plan.reference.resultIdentity === plan.simulated.resultIdentity ||
+    transformedResults.some(
+      (result) =>
+        result.mode !== "simulated" ||
+        result.sourceIdentity !== plan.sourceIdentity ||
+        result.resultIdentity.trim() === "",
+    ) ||
+    plan.simulated.supportMode !== "none" ||
+    plan.support["left-one-sided"].supportMode !== "left-one-sided" ||
+    plan.support.bilateral.supportMode !== "bilateral" ||
+    new Set(identities).size !== identities.length ||
     plan.limitation !== "illustrative-non-clinical"
   ) {
     throw new Error("The comparison plan violates the same-source contract.");
   }
 
-  assertValidFilters(plan.simulated.leftFilters);
-  assertValidFilters(plan.simulated.rightFilters);
+  assertValidFilters(plan.simulated.leftFilters, false);
+  assertValidFilters(plan.simulated.rightFilters, false);
+  assertValidFilters(plan.support["left-one-sided"].leftFilters, true);
+  assertValidFilters(plan.support["left-one-sided"].rightFilters, false);
+  assertValidFilters(plan.support.bilateral.leftFilters, true);
+  assertValidFilters(plan.support.bilateral.rightFilters, true);
+}
+
+export function resultForSupportMode(
+  plan: ComparisonPlan,
+  supportMode: SupportMode,
+): TransformedResultPlan {
+  switch (supportMode) {
+    case "none":
+      return plan.simulated;
+    case "left-one-sided":
+      return plan.support["left-one-sided"];
+    case "bilateral":
+      return plan.support.bilateral;
+  }
 }
 
 export function resultIdentityForMode(
   plan: ComparisonPlan,
   mode: ComparisonMode,
+  supportMode: SupportMode = "none",
 ): string {
-  return plan[mode].resultIdentity;
+  return mode === "reference"
+    ? plan.reference.resultIdentity
+    : resultForSupportMode(plan, supportMode).resultIdentity;
 }

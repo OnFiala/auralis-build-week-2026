@@ -8,13 +8,16 @@ import {
   type SourceBufferMetadata,
 } from "../core/safety";
 import {
+  resultForSupportMode,
   resultIdentityForMode,
   type ComparisonMode,
   type ComparisonPlan,
   type SpectralFilter,
+  type SupportMode,
 } from "../core/transformation";
 
-export const FAMILY_DINNER_SOURCE_ID = "auralis-family-dinner-greenhouse-v1";
+export const FAMILY_DINNER_SOURCE_ID =
+  "auralis-family-dinner-greenhouse:a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed";
 
 const MANIFEST_URL = "/media/family-dinner/manifest.json";
 const APPROVED_FILES = [
@@ -73,6 +76,7 @@ export type PlaybackEvidence = Readonly<{
   sourceIdentity: string;
   resultIdentity: string;
   mode: ComparisonMode;
+  supportMode: SupportMode | null;
   peakDbFs: number;
   durationSeconds: number;
   sampleRate: number;
@@ -290,6 +294,7 @@ export class BrowserAudioEngine {
 
   async play(
     mode: ComparisonMode,
+    supportMode: SupportMode,
     plan: ComparisonPlan,
     lowVolumeAcknowledged: boolean,
     callbacks: Readonly<{ onEnded: () => void; onInterrupted: () => void }>,
@@ -302,6 +307,7 @@ export class BrowserAudioEngine {
     assertPlaybackPreconditions(
       plan,
       mode,
+      supportMode,
       lowVolumeAcknowledged,
       loadedSource?.manifest.sourceIdentity ?? null,
     );
@@ -312,7 +318,12 @@ export class BrowserAudioEngine {
 
     const operationToken = ++this.operationToken;
     const context = await this.ensureRunningContext();
-    const rendered = await this.getRenderedResult(mode, plan, loadedSource);
+    const rendered = await this.getRenderedResult(
+      mode,
+      supportMode,
+      plan,
+      loadedSource,
+    );
 
     if (operationToken !== this.operationToken) {
       throw new AudioPlaybackCancelledError();
@@ -363,6 +374,7 @@ export class BrowserAudioEngine {
       sourceIdentity: plan.sourceIdentity,
       resultIdentity: rendered.resultIdentity,
       mode,
+      supportMode: mode === "reference" ? null : supportMode,
       peakDbFs: rendered.validation.peakDbFs,
       durationSeconds: rendered.validation.durationSeconds,
       sampleRate: rendered.validation.sampleRate,
@@ -452,10 +464,11 @@ export class BrowserAudioEngine {
 
   private async getRenderedResult(
     mode: ComparisonMode,
+    supportMode: SupportMode,
     plan: ComparisonPlan,
     source: LoadedSource,
   ): Promise<RenderedResult> {
-    const resultIdentity = resultIdentityForMode(plan, mode);
+    const resultIdentity = resultIdentityForMode(plan, mode, supportMode);
     const cached = this.renderedResults.get(resultIdentity);
 
     if (cached) {
@@ -476,8 +489,10 @@ export class BrowserAudioEngine {
       return node;
     });
 
-    const leftFilters = mode === "simulated" ? plan.simulated.leftFilters : [];
-    const rightFilters = mode === "simulated" ? plan.simulated.rightFilters : [];
+    const transformed =
+      mode === "simulated" ? resultForSupportMode(plan, supportMode) : null;
+    const leftFilters = transformed?.leftFilters ?? [];
+    const rightFilters = transformed?.rightFilters ?? [];
     connectFilterChain(context, leftInput, leftFilters, merger, 0);
     connectFilterChain(context, rightInput, rightFilters, merger, 1);
     merger.connect(context.destination);

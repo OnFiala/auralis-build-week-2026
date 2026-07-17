@@ -1,7 +1,9 @@
 import {
   assertValidComparisonPlan,
+  resultForSupportMode,
   type ComparisonMode,
   type ComparisonPlan,
+  type SupportMode,
 } from "./transformation";
 
 export const AUDIO_SAFETY_POLICY = Object.freeze({
@@ -85,10 +87,13 @@ export function assertSourcePackageMetadata(
 export function assertPlaybackPreconditions(
   plan: ComparisonPlan,
   mode: ComparisonMode,
+  supportMode: SupportMode,
   lowVolumeAcknowledged: boolean,
   sourceIdentity: string | null,
 ): void {
   assertValidComparisonPlan(plan);
+  const selectedResult =
+    mode === "reference" ? plan.reference : resultForSupportMode(plan, supportMode);
 
   if (!lowVolumeAcknowledged) {
     throw new AudioSafetyError("Low-volume acknowledgement is required before playback.");
@@ -97,7 +102,7 @@ export function assertPlaybackPreconditions(
   if (
     sourceIdentity === null ||
     sourceIdentity !== plan.sourceIdentity ||
-    plan[mode].sourceIdentity !== sourceIdentity
+    selectedResult.sourceIdentity !== sourceIdentity
   ) {
     throw new AudioSafetyError("The loaded source does not match the comparison plan.");
   }

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   createInitialExperienceState,
+  currentTransformedResult,
   experienceReducer,
+  projectVisibleExperienceState,
   type ExperienceState,
 } from "./experience";
 import {
@@ -19,12 +21,18 @@ import {
   validateRenderedAudio,
 } from "./safety";
 import {
+  SUPPORT_MAX_COMPENSATION_DB,
   assertValidComparisonPlan,
   createComparisonPlan,
+  resultForSupportMode,
+  supportCompensationDb,
+  supportedThresholdToGainDb,
+  thresholdToGainDb,
   type ComparisonPlan,
 } from "./transformation";
 
-const SOURCE_IDENTITY = "auralis-family-dinner-greenhouse-v1";
+const SOURCE_IDENTITY =
+  "auralis-family-dinner-greenhouse:a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed";
 
 function validThresholds(value = 25) {
   return {
@@ -211,6 +219,104 @@ describe("deterministic same-source transformation", () => {
   });
 });
 
+describe("genuine support progression", () => {
+  it("preserves the unsupported plan and changes only the supported left ear", () => {
+    const plan = createComparisonPlan(confirmedProfile(), SOURCE_IDENTITY);
+    const unsupported = resultForSupportMode(plan, "none");
+    const leftSupport = resultForSupportMode(plan, "left-one-sided");
+
+    expect(unsupported).toBe(plan.simulated);
+    expect(
+      unsupported.leftFilters.map((filter) => filter.gainDb),
+    ).toEqual(
+      unsupported.leftFilters.map((filter) =>
+        thresholdToGainDb(filter.inputThresholdDbHl),
+      ),
+    );
+    expect(leftSupport.rightFilters).toEqual(unsupported.rightFilters);
+    expect(leftSupport.leftFilters).not.toEqual(unsupported.leftFilters);
+    expect(leftSupport.leftFilters[4]).toMatchObject({
+      inputThresholdDbHl: 60,
+      gainDb: supportedThresholdToGainDb(60),
+    });
+    expect(leftSupport.rightFilters[4]).toMatchObject({
+      inputThresholdDbHl: 45,
+      gainDb: thresholdToGainDb(45),
+    });
+  });
+
+  it("applies the same bounded policy independently to both ears", () => {
+    const plan = createComparisonPlan(confirmedProfile(), SOURCE_IDENTITY);
+    const leftSupport = resultForSupportMode(plan, "left-one-sided");
+    const bilateral = resultForSupportMode(plan, "bilateral");
+
+    expect(bilateral.leftFilters).toEqual(leftSupport.leftFilters);
+    expect(bilateral.rightFilters).not.toEqual(leftSupport.rightFilters);
+    expect(bilateral.rightFilters[3]).toMatchObject({
+      inputThresholdDbHl: 35,
+      gainDb: supportedThresholdToGainDb(35),
+    });
+
+    for (const threshold of [0, 25, 35, 45, 60, 100]) {
+      expect(supportCompensationDb(threshold)).toBeLessThanOrEqual(
+        SUPPORT_MAX_COMPENSATION_DB,
+      );
+      expect(supportedThresholdToGainDb(threshold)).toBeGreaterThanOrEqual(
+        thresholdToGainDb(threshold),
+      );
+      expect(supportedThresholdToGainDb(threshold)).toBeLessThanOrEqual(0);
+    }
+    expect(supportedThresholdToGainDb(100)).toBe(-15);
+  });
+
+  it("is deterministic, same-source and frequency-specific for every support mode", () => {
+    const first = createComparisonPlan(confirmedProfile(), SOURCE_IDENTITY);
+    const second = createComparisonPlan(confirmedProfile(), SOURCE_IDENTITY);
+
+    for (const supportMode of [
+      "none",
+      "left-one-sided",
+      "bilateral",
+    ] as const) {
+      const firstResult = resultForSupportMode(first, supportMode);
+      const secondResult = resultForSupportMode(second, supportMode);
+      const leftCompensation = firstResult.leftFilters.map(
+        (filter, index) =>
+          filter.gainDb - first.simulated.leftFilters[index]!.gainDb,
+      );
+
+      expect(firstResult).toEqual(secondResult);
+      expect(firstResult.sourceIdentity).toBe(SOURCE_IDENTITY);
+      expect(firstResult.resultIdentity).toBe(secondResult.resultIdentity);
+
+      if (supportMode !== "none") {
+        expect(new Set(leftCompensation).size).toBeGreaterThan(1);
+      }
+    }
+  });
+
+  it("rejects an invalid support plan instead of bypassing safety validation", () => {
+    const plan = createComparisonPlan(confirmedProfile(), SOURCE_IDENTITY);
+    const unsafe = {
+      ...plan,
+      support: {
+        ...plan.support,
+        bilateral: {
+          ...plan.support.bilateral,
+          leftFilters: [
+            { ...plan.support.bilateral.leftFilters[0], gainDb: 1 },
+            ...plan.support.bilateral.leftFilters.slice(1),
+          ],
+        },
+      },
+    } as ComparisonPlan;
+
+    expect(() => assertValidComparisonPlan(unsafe)).toThrow(
+      "unsafe or invalid filter",
+    );
+  });
+});
+
 describe("canonical experience state", () => {
   it("accepts the valid confirmation, source, render and playback transition chain", () => {
     let state = confirmedState();
@@ -240,6 +346,7 @@ describe("canonical experience state", () => {
     state = experienceReducer(state, {
       type: "playback-started",
       mode: "simulated",
+      supportMode: "none",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity: resultIdentity!,
       peakDbFs: -9,
@@ -333,6 +440,7 @@ describe("canonical experience state", () => {
     state = experienceReducer(state, {
       type: "playback-started",
       mode: "reference",
+      supportMode: null,
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity,
       peakDbFs: -8,
@@ -375,6 +483,60 @@ describe("canonical experience state", () => {
     expect(state.lowVolumeAcknowledged).toBe(true);
     expect(state.renders.simulated.status).toBe("rendering");
   });
+
+  it("keeps support canonical and rejects a change during supported playback", () => {
+    let state = confirmedState();
+    state = experienceReducer(state, {
+      type: "support-mode-changed",
+      supportMode: "left-one-sided",
+    });
+    state = experienceReducer(state, {
+      type: "low-volume-acknowledgement-changed",
+      acknowledged: true,
+    });
+    state = experienceReducer(state, { type: "source-load-started" });
+    state = experienceReducer(state, {
+      type: "source-ready",
+      sourceIdentity: SOURCE_IDENTITY,
+      sampleRate: 24000,
+      frameCount: 1536000,
+      durationSeconds: 64,
+    });
+    state = experienceReducer(state, {
+      type: "render-started",
+      mode: "simulated",
+    });
+
+    const resultIdentity = state.comparisonPlan!.support[
+      "left-one-sided"
+    ].resultIdentity;
+    state = experienceReducer(state, {
+      type: "playback-started",
+      mode: "simulated",
+      supportMode: "left-one-sided",
+      sourceIdentity: SOURCE_IDENTITY,
+      resultIdentity,
+      peakDbFs: -8,
+    });
+    const rejected = experienceReducer(state, {
+      type: "support-mode-changed",
+      supportMode: "bilateral",
+    });
+
+    expect(rejected.failure?.code).toBe("invalid-transition");
+    expect(rejected.supportMode).toBe("left-one-sided");
+    expect(rejected.playback.status).toBe("playing");
+    expect(currentTransformedResult(rejected)?.supportMode).toBe(
+      "left-one-sided",
+    );
+    expect(projectVisibleExperienceState(rejected).support).toContain(
+      "Left-ear support",
+    );
+
+    const stopped = experienceReducer(rejected, { type: "playback-stopped" });
+    expect(stopped.playback.status).toBe("stopped");
+    expect(stopped.supportMode).toBe("left-one-sided");
+  });
 });
 
 describe("fail-closed audio safety policy", () => {
@@ -382,10 +544,16 @@ describe("fail-closed audio safety policy", () => {
     const plan = createComparisonPlan(confirmedProfile(), SOURCE_IDENTITY);
 
     expect(() =>
-      assertPlaybackPreconditions(plan, "reference", false, SOURCE_IDENTITY),
+      assertPlaybackPreconditions(
+        plan,
+        "reference",
+        "none",
+        false,
+        SOURCE_IDENTITY,
+      ),
     ).toThrow(AudioSafetyError);
     expect(() =>
-      assertPlaybackPreconditions(plan, "reference", true, "wrong-source"),
+      assertPlaybackPreconditions(plan, "reference", "none", true, "wrong-source"),
     ).toThrow(AudioSafetyError);
   });
 

@@ -10,9 +10,11 @@ import {
 import {
   comparisonResultIdentity,
   createInitialExperienceState,
+  currentTransformedResult,
   experienceReducer,
   projectVisibleExperienceState,
   type ExperienceComparisonMode,
+  type ExperienceSupportMode,
 } from "../core/experience";
 import {
   FREQUENCY_GRID_HZ,
@@ -27,6 +29,12 @@ const statusText: Record<CheckState, string> = {
   checking: "Checking system status…",
   ready: "System status: ready.",
   unavailable: "System status: unavailable.",
+};
+
+const supportLabels: Record<ExperienceSupportMode, string> = {
+  none: "No support",
+  "left-one-sided": "Left-ear support",
+  bilateral: "Bilateral support",
 };
 
 function isExpectedHealthResponse(value: unknown): boolean {
@@ -51,6 +59,7 @@ export default function HomePage() {
   );
   const audioEngineRef = useRef<BrowserAudioEngine | null>(null);
   const visible = projectVisibleExperienceState(experience);
+  const selectedTransformation = currentTransformedResult(experience);
   const isRendering =
     experience.renders.reference.status === "rendering" ||
     experience.renders.simulated.status === "rendering";
@@ -143,6 +152,7 @@ export default function HomePage() {
     try {
       const evidence = await audioEngine().play(
         mode,
+        experience.supportMode,
         plan,
         experience.lowVolumeAcknowledged,
         {
@@ -162,6 +172,7 @@ export default function HomePage() {
       dispatch({
         type: "playback-started",
         mode,
+        supportMode: evidence.supportMode,
         sourceIdentity: evidence.sourceIdentity,
         resultIdentity: evidence.resultIdentity,
         peakDbFs: evidence.peakDbFs,
@@ -195,11 +206,14 @@ export default function HomePage() {
         <p className="tagline">See what hearing sounds like.</p>
         <p>
           This is the executable system shell. It now hosts a bounded local Phase
-          10A proof.
+          10 deterministic audio proof.
         </p>
         <p>
-          The hearing experience is not implemented yet as a complete product;
-          only the first deterministic proof is present.
+          The hearing experience is not implemented yet.
+        </p>
+        <p>
+          This local build contains only the first bounded deterministic proof,
+          not the complete product experience.
         </p>
 
         <button
@@ -235,14 +249,14 @@ export default function HomePage() {
         <div className="table-scroll">
           <table>
             <caption>
-              Edit the left and right values separately, then confirm the exact
+              Edit the right and left values separately, then confirm the exact
               profile.
             </caption>
             <thead>
               <tr>
                 <th scope="col">Frequency</th>
-                <th scope="col">Left ear (dB HL)</th>
                 <th scope="col">Right ear (dB HL)</th>
+                <th scope="col">Left ear (dB HL)</th>
               </tr>
             </thead>
             <tbody>
@@ -252,7 +266,7 @@ export default function HomePage() {
                 return (
                   <tr key={frequency}>
                     <th scope="row">{frequency >= 1000 ? `${frequency / 1000} kHz` : `${frequency} Hz`}</th>
-                    {(["left", "right"] as const).map((ear) => (
+                    {(["right", "left"] as const).map((ear) => (
                       <td key={ear}>
                         <input
                           aria-label={`${ear} ear at ${frequency} Hz`}
@@ -318,32 +332,63 @@ export default function HomePage() {
         <h2 id="comparison-heading">Compare the exact same source</h2>
         <p>
           Reference and simulated playback reuse the same decoded four-stem
-          package. Only the simulated state applies the confirmed profile&apos;s
-          per-ear frequency filters.
+          package. The selected illustrative support state changes only the
+          profile-derived per-ear filters.
         </p>
 
-        {experience.comparisonPlan ? (
+        <fieldset
+          className="support-selector"
+          disabled={!experience.comparisonPlan || controlsLocked}
+        >
+          <legend>Illustrative support state</legend>
+          <div className="support-options">
+            {(
+              [
+                ["none", "No support"],
+                ["left-one-sided", "Left-ear support"],
+                ["bilateral", "Bilateral support"],
+              ] as const
+            ).map(([supportMode, label]) => (
+              <label key={supportMode}>
+                <input
+                  type="radio"
+                  name="support-mode"
+                  value={supportMode}
+                  checked={experience.supportMode === supportMode}
+                  onChange={() =>
+                    dispatch({ type: "support-mode-changed", supportMode })
+                  }
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <p className="state-line">{visible.support}</p>
+
+        {selectedTransformation ? (
           <div className="table-scroll proof-table">
             <table>
-              <caption>Profile-derived attenuation plan</caption>
+              <caption>
+                {supportLabels[experience.supportMode]} profile-derived plan
+              </caption>
               <thead>
                 <tr>
                   <th scope="col">Frequency</th>
-                  <th scope="col">Left</th>
                   <th scope="col">Right</th>
+                  <th scope="col">Left</th>
                 </tr>
               </thead>
               <tbody>
-                {experience.comparisonPlan.simulated.leftFilters.map(
+                {selectedTransformation.leftFilters.map(
                   (leftFilter, index) => {
-                    const rightFilter =
-                      experience.comparisonPlan!.simulated.rightFilters[index];
+                    const rightFilter = selectedTransformation.rightFilters[index];
 
                     return (
                       <tr key={leftFilter.frequencyHz}>
                         <th scope="row">{leftFilter.frequencyHz} Hz</th>
-                        <td>{leftFilter.gainDb.toFixed(1)} dB</td>
                         <td>{rightFilter.gainDb.toFixed(1)} dB</td>
+                        <td>{leftFilter.gainDb.toFixed(1)} dB</td>
                       </tr>
                     );
                   },
@@ -394,7 +439,7 @@ export default function HomePage() {
               controlsLocked
             }
           >
-            Play profile-derived result
+            Play {supportLabels[experience.supportMode].toLowerCase()} result
           </button>
           <button
             className="stop-button"
@@ -411,6 +456,7 @@ export default function HomePage() {
           <ul>
             <li>{visible.profile}</li>
             <li>{visible.source}</li>
+            <li>{visible.support}</li>
             <li>{visible.reference}</li>
             <li>{visible.simulated}</li>
             <li>{visible.playback}</li>
@@ -420,7 +466,8 @@ export default function HomePage() {
         <p className="limitation">
           This is an illustrative, non-clinical spectral transformation. It is
           not a hearing test, diagnosis, treatment, prescription, or exact model
-          of any person&apos;s hearing.
+          of any person&apos;s hearing. Support is not a hearing-aid fitting,
+          prescription, or prediction of individual benefit. Start at low volume.
         </p>
       </section>
     </main>

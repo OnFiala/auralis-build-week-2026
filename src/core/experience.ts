@@ -10,12 +10,16 @@ import {
 } from "./profile";
 import {
   createComparisonPlan,
+  resultForSupportMode,
   resultIdentityForMode,
   type ComparisonMode,
   type ComparisonPlan,
+  type SupportMode,
+  type TransformedResultPlan,
 } from "./transformation";
 
 export type ExperienceComparisonMode = ComparisonMode;
+export type ExperienceSupportMode = SupportMode;
 
 type SourceState =
   | Readonly<{ status: "idle" }>
@@ -45,9 +49,15 @@ type PlaybackState =
   | Readonly<{
       status: "playing";
       mode: ComparisonMode;
+      supportMode: SupportMode | null;
       resultIdentity: string;
     }>
-  | Readonly<{ status: "failed"; mode: null; resultIdentity: null }>;
+  | Readonly<{
+      status: "failed";
+      mode: null;
+      supportMode: null;
+      resultIdentity: null;
+    }>;
 
 export type ValidatedFailureCode =
   | "invalid-profile"
@@ -75,6 +85,7 @@ export type ExperienceState = Readonly<{
   }> | null;
   confirmedProfile: ConfirmedHearingProfile | null;
   comparisonPlan: ComparisonPlan | null;
+  supportMode: SupportMode;
   source: SourceState;
   renders: Readonly<Record<ComparisonMode, RenderState>>;
   lowVolumeAcknowledged: boolean;
@@ -90,6 +101,7 @@ export type ExperienceAction =
       value: string;
     }>
   | Readonly<{ type: "manual-profile-confirmed"; sourceIdentity: string }>
+  | Readonly<{ type: "support-mode-changed"; supportMode: SupportMode }>
   | Readonly<{ type: "low-volume-acknowledgement-changed"; acknowledged: boolean }>
   | Readonly<{ type: "source-load-started" }>
   | Readonly<{
@@ -103,6 +115,7 @@ export type ExperienceAction =
   | Readonly<{
       type: "playback-started";
       mode: ComparisonMode;
+      supportMode: SupportMode | null;
       sourceIdentity: string;
       resultIdentity: string;
       peakDbFs: number;
@@ -137,6 +150,7 @@ const stoppedPlayback = (): PlaybackState =>
   Object.freeze({
     status: "stopped" as const,
     mode: null,
+    supportMode: null,
     resultIdentity: null,
   });
 
@@ -147,6 +161,7 @@ export function createInitialExperienceState(): ExperienceState {
     lastEdit: null,
     confirmedProfile: null,
     comparisonPlan: null,
+    supportMode: "none" as const,
     source: Object.freeze({ status: "idle" as const }),
     renders: idleRenders(),
     lowVolumeAcknowledged: false,
@@ -178,7 +193,7 @@ function expectedResultIdentity(
   mode: ComparisonMode,
 ): string | null {
   return state.comparisonPlan
-    ? resultIdentityForMode(state.comparisonPlan, mode)
+    ? resultIdentityForMode(state.comparisonPlan, mode, state.supportMode)
     : null;
 }
 
@@ -187,6 +202,14 @@ export function comparisonResultIdentity(
   mode: ExperienceComparisonMode,
 ): string | null {
   return expectedResultIdentity(state, mode);
+}
+
+export function currentTransformedResult(
+  state: ExperienceState,
+): TransformedResultPlan | null {
+  return state.comparisonPlan
+    ? resultForSupportMode(state.comparisonPlan, state.supportMode)
+    : null;
 }
 
 export function experienceReducer(
@@ -218,6 +241,7 @@ export function experienceReducer(
         }),
         confirmedProfile: null,
         comparisonPlan: null,
+        supportMode: "none" as const,
         source:
           state.source.status === "loading"
             ? Object.freeze({ status: "idle" as const })
@@ -244,6 +268,7 @@ export function experienceReducer(
           ...state,
           confirmedProfile: profile,
           comparisonPlan,
+          supportMode: "none" as const,
           renders: idleRenders(),
           playback: stoppedPlayback(),
           failure: null,
@@ -254,6 +279,7 @@ export function experienceReducer(
             ...state,
             confirmedProfile: null,
             comparisonPlan: null,
+            supportMode: "none" as const,
             renders: idleRenders(),
             failure: failure("invalid-profile"),
           });
@@ -261,6 +287,39 @@ export function experienceReducer(
 
         throw error;
       }
+    }
+
+    case "support-mode-changed": {
+      const rendering =
+        state.renders.reference.status === "rendering" ||
+        state.renders.simulated.status === "rendering";
+
+      if (
+        !state.comparisonPlan ||
+        state.source.status === "loading" ||
+        state.playback.status === "playing" ||
+        rendering
+      ) {
+        return rejectTransition(state, "invalid-transition");
+      }
+
+      if (state.supportMode === action.supportMode) {
+        return Object.freeze({
+          ...state,
+          failure: null,
+        });
+      }
+
+      return Object.freeze({
+        ...state,
+        supportMode: action.supportMode,
+        renders: Object.freeze({
+          ...state.renders,
+          simulated: Object.freeze({ status: "idle" as const }),
+        }),
+        playback: stoppedPlayback(),
+        failure: null,
+      });
     }
 
     case "low-volume-acknowledgement-changed": {
@@ -338,6 +397,8 @@ export function experienceReducer(
 
     case "playback-started": {
       const expectedIdentity = expectedResultIdentity(state, action.mode);
+      const expectedSupportMode =
+        action.mode === "reference" ? null : state.supportMode;
 
       if (
         !state.lowVolumeAcknowledged ||
@@ -346,6 +407,7 @@ export function experienceReducer(
         state.comparisonPlan?.sourceIdentity !== action.sourceIdentity ||
         expectedIdentity === null ||
         expectedIdentity !== action.resultIdentity ||
+        action.supportMode !== expectedSupportMode ||
         state.renders[action.mode].status !== "rendering"
       ) {
         return rejectTransition(state, "stale-transition");
@@ -365,6 +427,7 @@ export function experienceReducer(
         playback: Object.freeze({
           status: "playing" as const,
           mode: action.mode,
+          supportMode: expectedSupportMode,
           resultIdentity: action.resultIdentity,
         }),
         failure: null,
@@ -418,6 +481,7 @@ export function experienceReducer(
         playback: Object.freeze({
           status: "failed" as const,
           mode: null,
+          supportMode: null,
           resultIdentity: null,
         }),
         failure: failure(action.code),
@@ -429,6 +493,7 @@ export function experienceReducer(
 export type VisibleExperienceState = Readonly<{
   profile: string;
   source: string;
+  support: string;
   reference: string;
   simulated: string;
   playback: string;
@@ -436,8 +501,19 @@ export type VisibleExperienceState = Readonly<{
   failure: string | null;
 }>;
 
-function renderLabel(mode: ComparisonMode, render: RenderState): string {
-  const name = mode === "reference" ? "Reference" : "Simulated";
+const supportLabels: Record<SupportMode, string> = {
+  none: "No support",
+  "left-one-sided": "Left-ear support",
+  bilateral: "Bilateral support",
+};
+
+function renderLabel(
+  mode: ComparisonMode,
+  supportMode: SupportMode,
+  render: RenderState,
+): string {
+  const name =
+    mode === "reference" ? "Reference" : supportLabels[supportMode];
 
   switch (render.status) {
     case "idle":
@@ -476,7 +552,9 @@ export function projectVisibleExperienceState(
 
   const playback =
     state.playback.status === "playing"
-      ? `Playback: ${state.playback.mode}.`
+      ? state.playback.mode === "reference"
+        ? "Playback: reference."
+        : `Playback: ${supportLabels[state.playback.supportMode ?? "none"]}.`
       : state.playback.status === "failed"
         ? "Playback: blocked."
         : "Playback: stopped.";
@@ -488,8 +566,9 @@ export function projectVisibleExperienceState(
   return Object.freeze({
     profile,
     source,
-    reference: renderLabel("reference", state.renders.reference),
-    simulated: renderLabel("simulated", state.renders.simulated),
+    support: `Support state: ${supportLabels[state.supportMode]}.`,
+    reference: renderLabel("reference", state.supportMode, state.renders.reference),
+    simulated: renderLabel("simulated", state.supportMode, state.renders.simulated),
     playback,
     lastEdit,
     failure: state.failure?.message ?? null,
