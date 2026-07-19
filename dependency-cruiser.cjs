@@ -35,6 +35,13 @@ module.exports = {
       to: { path: "^src/app/" },
     },
     {
+      name: "no-model-client-to-raw-profile",
+      comment: "The bounded browser model client must not import raw hearing-profile types.",
+      severity: "error",
+      from: { path: "^src/browser/model-client\\.ts$" },
+      to: { path: "^src/core/profile\\.ts$" },
+    },
+    {
       name: "no-pure-core-to-outer-layers",
       comment: "Pure contracts and core logic must not import composition or adapter layers.",
       severity: "error",
@@ -49,6 +56,16 @@ module.exports = {
       to: { path: "^src/core/(transformation|safety)\\.ts$" },
     },
     {
+      name: "openai-sdk-provider-only",
+      comment: "Only the trusted OpenAI provider adapter may import the official SDK.",
+      severity: "error",
+      from: {
+        path: "^src/",
+        pathNot: "^src/server/openai\\.ts$",
+      },
+      to: { path: "^node_modules/openai(/|$)" },
+    },
+    {
       name: "no-runtime-dev-dependencies",
       comment: "Production source must not import development-only packages.",
       severity: "error",
@@ -60,7 +77,7 @@ module.exports = {
     },
     {
       name: "no-unapproved-runtime-packages",
-      comment: "Increment 10A runtime source may import only the approved framework packages and Zod.",
+      comment: "Runtime source may import only the approved framework, contract-validation and OpenAI provider packages.",
       severity: "error",
       from: {
         path: "^src/",
@@ -68,7 +85,7 @@ module.exports = {
       },
       to: {
         dependencyTypes: ["npm", "npm-optional", "npm-peer"],
-        pathNot: "^node_modules/(next|react|react-dom|zod)(/|$)",
+        pathNot: "^node_modules/(next|openai|react|react-dom|zod)(/|$)",
       },
     },
   ],

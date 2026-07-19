@@ -13,11 +13,13 @@
     "typecheck": "tsc --noEmit",
     "check:deps": "depcruise --config dependency-cruiser.cjs -- src tests",
     "test:core": "vitest run src/core/core.test.ts",
+    "test:model": "vitest run src/server/model.test.ts",
     "test:smoke": "playwright test tests/smoke.spec.ts",
-    "check": "npm run typecheck && npm run check:deps && npm run test:core && npm run build && npm run test:smoke"
+    "check": "npm run typecheck && npm run check:deps && npm run test:core && npm run test:model && npm run build && npm run test:smoke"
   },
   "dependencies": {
     "next": "16.2.10",
+    "openai": "6.48.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "zod": "4.4.3"

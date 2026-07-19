@@ -7,9 +7,13 @@ import {
   BrowserAudioEngine,
   FAMILY_DINNER_SOURCE_ID,
 } from "../browser/audio";
+import { requestLiveExplanation } from "../browser/model-client";
+import { MAX_MODEL_ATTEMPTS_PER_SESSION } from "../contracts/runtime";
 import {
+  canRequestModelExplanation,
   comparisonResultIdentity,
   createInitialExperienceState,
+  createModelExplanationRequest,
   currentTransformedResult,
   experienceReducer,
   projectVisibleExperienceState,
@@ -68,6 +72,8 @@ export default function HomePage() {
     createInitialExperienceState(),
   );
   const audioEngineRef = useRef<BrowserAudioEngine | null>(null);
+  const runIdRef = useRef<string | null>(null);
+  const modelRequestInFlightRef = useRef(false);
   const visible = projectVisibleExperienceState(experience);
   const selectedTransformation = currentTransformedResult(experience);
   const isRendering =
@@ -226,6 +232,34 @@ export default function HomePage() {
   function stopPlayback() {
     audioEngineRef.current?.stop();
     dispatch({ type: "playback-stopped" });
+  }
+
+  async function generateLiveExplanation() {
+    if (modelRequestInFlightRef.current) {
+      return;
+    }
+
+    runIdRef.current ??= globalThis.crypto.randomUUID();
+    const request = createModelExplanationRequest(
+      experience,
+      runIdRef.current,
+      globalThis.crypto.randomUUID(),
+      `result-${globalThis.crypto.randomUUID()}`,
+    );
+
+    if (!request) {
+      return;
+    }
+
+    modelRequestInFlightRef.current = true;
+    dispatch({ type: "model-request-started", request });
+
+    try {
+      const result = await requestLiveExplanation(request);
+      dispatch({ type: "model-result-received", result });
+    } finally {
+      modelRequestInFlightRef.current = false;
+    }
   }
 
   return (
@@ -640,6 +674,7 @@ export default function HomePage() {
             <li>{visible.reference}</li>
             <li>{visible.simulated}</li>
             <li>{visible.playback}</li>
+            <li>{visible.model}</li>
           </ul>
         </div>
 
@@ -649,6 +684,60 @@ export default function HomePage() {
           of any person&apos;s hearing. Support is not a hearing-aid fitting,
           prescription, or prediction of individual benefit. Start at low volume.
         </p>
+      </section>
+
+      <section aria-labelledby="live-explanation-heading">
+        <p className="step-label">Step 4</p>
+        <h2 id="live-explanation-heading">Explain the current result</h2>
+        <p>
+          Generate one fresh, bounded explanation for the current illustrative
+          profile, support state and TV intervention. No raw audiogram values are
+          sent to the model.
+        </p>
+        <p>
+          The explanation is not a diagnosis, prescription or guarantee of
+          individual perception. Deterministic audio remains available if GPT is
+          unavailable.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => void generateLiveExplanation()}
+          disabled={!canRequestModelExplanation(experience)}
+        >
+          {experience.modelState.status === "loading"
+            ? "Generating live explanation…"
+            : experience.modelState.status === "degraded"
+              ? "Retry live explanation"
+              : "Generate live explanation"}
+        </button>
+
+        <p className="state-line" role="status" aria-live="polite">
+          {visible.model}
+        </p>
+        <p className="attempt-count">
+          Explanation attempts used: {experience.modelAttemptsUsed} of{" "}
+          {MAX_MODEL_ATTEMPTS_PER_SESSION}.
+        </p>
+
+        {experience.modelState.status === "live" ? (
+          <div className="model-result model-result-live">
+            <p className="model-badge">Live GPT</p>
+            <h3>Current grounded explanation</h3>
+            <p>{experience.modelState.result.sceneFraming}</p>
+            <p>{experience.modelState.result.audibleChange}</p>
+            <p>{experience.modelState.result.unchanged}</p>
+            <p>{experience.modelState.result.limitation}</p>
+          </div>
+        ) : null}
+
+        {experience.modelState.status === "degraded" ? (
+          <div className="model-result model-result-degraded" role="alert">
+            <p className="model-badge">Degraded</p>
+            <h3>Live explanation unavailable</h3>
+            <p>{experience.modelState.result.message}</p>
+          </div>
+        ) : null}
       </section>
     </main>
   );

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canRequestModelExplanation,
   createInitialExperienceState,
+  createModelExplanationRequest,
   currentTransformedResult,
   experienceReducer,
   projectVisibleExperienceState,
@@ -35,6 +37,7 @@ import {
   thresholdToGainDb,
   type ComparisonPlan,
 } from "./transformation";
+import { MODEL_ID } from "../contracts/runtime";
 
 const SOURCE_IDENTITY =
   "auralis-family-dinner-greenhouse:a6cb7016fa973cb52a1994454cacd880a4f5864ce0a32a8081a75aad36224aed";
@@ -124,6 +127,38 @@ function confirmedState(): ExperienceState {
     type: "manual-profile-confirmed",
     sourceIdentity: SOURCE_IDENTITY,
   });
+}
+
+function modelReadyState(): ExperienceState {
+  let state = confirmedState();
+  state = experienceReducer(state, {
+    type: "low-volume-acknowledgement-changed",
+    acknowledged: true,
+  });
+  state = experienceReducer(state, { type: "source-load-started" });
+  state = experienceReducer(state, {
+    type: "source-ready",
+    sourceIdentity: SOURCE_IDENTITY,
+    sampleRate: 24000,
+    frameCount: 1536000,
+    durationSeconds: 64,
+  });
+  state = experienceReducer(state, {
+    type: "render-started",
+    mode: "simulated",
+  });
+  const result = currentTransformedResult(state)!;
+  state = experienceReducer(state, {
+    type: "playback-started",
+    mode: "simulated",
+    supportMode: state.supportMode,
+    interventionState: state.interventionState,
+    sourceIdentity: result.sourceIdentity,
+    resultIdentity: result.resultIdentity,
+    peakDbFs: -9,
+  });
+
+  return experienceReducer(state, { type: "playback-stopped" });
 }
 
 describe("manual hearing profile", () => {
@@ -965,6 +1000,231 @@ describe("canonical experience state", () => {
     const stopped = experienceReducer(rejected, { type: "playback-stopped" });
     expect(stopped.playback.status).toBe("stopped");
     expect(stopped.supportMode).toBe("left-one-sided");
+  });
+});
+
+describe("canonical live and degraded model state", () => {
+  it("creates a sanitized request and applies only the matching fresh result", () => {
+    let state = modelReadyState();
+    const request = createModelExplanationRequest(
+      state,
+      "run-1",
+      "attempt-1",
+      "result-transport-1",
+    );
+
+    expect(request).not.toBeNull();
+    expect(request).not.toHaveProperty("leftThresholdsDbHl");
+    expect(request).not.toHaveProperty("rightThresholdsDbHl");
+    expect(JSON.stringify(request)).not.toMatch(/threshold|audiogram/i);
+    expect(request!.resultIdentity).toBe("result-transport-1");
+    expect(request!.resultIdentity).not.toBe(
+      currentTransformedResult(state)!.resultIdentity,
+    );
+    expect(JSON.stringify(request)).not.toContain(
+      currentTransformedResult(state)!.resultIdentity,
+    );
+    expect(request).toMatchObject({
+      profile: {
+        origin: "manual",
+        predefinedProfileId: null,
+        pattern: "higher-frequency-emphasis",
+        earBalance: "similar",
+      },
+      supportMode: "none",
+      interventionState: "tv-on",
+    });
+
+    state = experienceReducer(state, {
+      type: "model-request-started",
+      request: request!,
+    });
+    expect(state.modelState.status).toBe("loading");
+    expect(state.modelAttemptsUsed).toBe(1);
+
+    state = experienceReducer(state, {
+      type: "model-result-received",
+      result: {
+        status: "live",
+        operation: request!.operation,
+        runId: request!.runId,
+        attemptId: request!.attemptId,
+        attemptNumber: request!.attemptNumber,
+        groundingRevision: request!.groundingRevision,
+        sourceIdentity: request!.sourceIdentity,
+        resultIdentity: request!.resultIdentity,
+        model: MODEL_ID,
+        responseId: "resp-1",
+        sceneFraming: "A synthetic family dinner is in progress.",
+        audibleChange: "No support is active and TV on remains in the scene.",
+        unchanged: "The source and timeline remain unchanged.",
+        limitation: "Individual perception can differ.",
+      },
+    });
+
+    expect(state.modelState.status).toBe("live");
+    expect(projectVisibleExperienceState(state).model).toContain(
+      "current and grounded",
+    );
+  });
+
+  it("rejects stale run, attempt, revision and result identities", () => {
+    const mismatches = [
+      { runId: "other-run" },
+      { attemptId: "other-attempt" },
+      { groundingRevision: 999 },
+      { resultIdentity: "other-result" },
+    ];
+
+    for (const mismatch of mismatches) {
+      let state = modelReadyState();
+      const request = createModelExplanationRequest(
+        state,
+        "run-1",
+        "attempt-1",
+        "result-transport-1",
+      )!;
+      state = experienceReducer(state, {
+        type: "model-request-started",
+        request,
+      });
+      state = experienceReducer(state, {
+        type: "model-result-received",
+        result: {
+          status: "degraded",
+          operation: request.operation,
+          runId: request.runId,
+          attemptId: request.attemptId,
+          attemptNumber: request.attemptNumber,
+          groundingRevision: request.groundingRevision,
+          sourceIdentity: request.sourceIdentity,
+          resultIdentity: request.resultIdentity,
+          model: MODEL_ID,
+          responseId: null,
+          reason: "provider-failure",
+          message:
+            "Live GPT explanation is unavailable. The deterministic audio comparison remains available.",
+          ...mismatch,
+        },
+      });
+
+      expect(state.modelState.status).toBe("idle");
+    }
+  });
+
+  it("invalidates an explanation when support or intervention grounding changes", () => {
+    let state = modelReadyState();
+    const request = createModelExplanationRequest(
+      state,
+      "run-1",
+      "attempt-1",
+      "result-transport-1",
+    )!;
+    state = experienceReducer(state, {
+      type: "model-request-started",
+      request,
+    });
+    state = experienceReducer(state, {
+      type: "model-result-received",
+      result: {
+        status: "degraded",
+        operation: request.operation,
+        runId: request.runId,
+        attemptId: request.attemptId,
+        attemptNumber: request.attemptNumber,
+        groundingRevision: request.groundingRevision,
+        sourceIdentity: request.sourceIdentity,
+        resultIdentity: request.resultIdentity,
+        model: MODEL_ID,
+        responseId: null,
+        reason: "provider-failure",
+        message:
+          "Live GPT explanation is unavailable. The deterministic audio comparison remains available.",
+      },
+    });
+
+    const revision = state.modelGroundingRevision;
+    state = experienceReducer(state, {
+      type: "support-mode-changed",
+      supportMode: "left-one-sided",
+    });
+    expect(state.modelState.status).toBe("idle");
+    expect(state.modelGroundingRevision).toBe(revision + 1);
+
+    state = experienceReducer(state, {
+      type: "intervention-state-changed",
+      interventionState: "tv-off",
+    });
+    expect(state.modelState.status).toBe("idle");
+    expect(state.modelGroundingRevision).toBe(revision + 2);
+  });
+
+  it("keeps deterministic audio usable while degraded and limits explicit attempts", () => {
+    let state = modelReadyState();
+
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const request = createModelExplanationRequest(
+        state,
+        "run-1",
+        `attempt-${attempt}`,
+        `result-transport-${attempt}`,
+      )!;
+      state = experienceReducer(state, {
+        type: "model-request-started",
+        request,
+      });
+      state = experienceReducer(state, {
+        type: "model-result-received",
+        result: {
+          status: "degraded",
+          operation: request.operation,
+          runId: request.runId,
+          attemptId: request.attemptId,
+          attemptNumber: request.attemptNumber,
+          groundingRevision: request.groundingRevision,
+          sourceIdentity: request.sourceIdentity,
+          resultIdentity: request.resultIdentity,
+          model: MODEL_ID,
+          responseId: null,
+          reason: "timeout",
+          message:
+            "Live GPT explanation is unavailable. The deterministic audio comparison remains available.",
+        },
+      });
+    }
+
+    expect(state.modelState.status).toBe("degraded");
+    expect(state.modelAttemptsUsed).toBe(3);
+    expect(canRequestModelExplanation(state)).toBe(false);
+    expect(
+      createModelExplanationRequest(
+        state,
+        "run-1",
+        "attempt-4",
+        "result-transport-4",
+      ),
+    ).toBeNull();
+
+    state = experienceReducer(state, {
+      type: "render-started",
+      mode: "reference",
+    });
+    const reference = referenceResultForIntervention(
+      state.comparisonPlan!,
+      state.interventionState,
+    );
+    state = experienceReducer(state, {
+      type: "playback-started",
+      mode: "reference",
+      supportMode: null,
+      interventionState: state.interventionState,
+      sourceIdentity: reference.sourceIdentity,
+      resultIdentity: reference.resultIdentity,
+      peakDbFs: -8,
+    });
+
+    expect(state.playback.status).toBe("playing");
+    expect(state.modelState.status).toBe("degraded");
   });
 });
 

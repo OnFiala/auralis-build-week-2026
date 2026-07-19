@@ -1,4 +1,12 @@
 import {
+  MAX_MODEL_ATTEMPTS_PER_SESSION,
+  MODEL_OPERATION,
+  modelExplanationRequestSchema,
+  type ModelExplanationRequest,
+  type ModelExplanationResponse,
+} from "../contracts/runtime";
+import {
+  FREQUENCY_KEYS,
   MANUAL_PROFILE_ENTRY_LABEL,
   ProfileValidationError,
   confirmManualAudiogramDraft,
@@ -28,6 +36,22 @@ export type ExperienceComparisonMode = ComparisonMode;
 export type ExperienceSupportMode = SupportMode;
 export type ExperienceInterventionState = InterventionState;
 export type ExperienceProfileEntryOption = ProfileEntryOption;
+
+export type ModelState =
+  | Readonly<{ status: "idle" }>
+  | Readonly<{
+      status: "loading";
+      request: ModelExplanationRequest;
+      canonicalResultIdentity: string;
+    }>
+  | Readonly<{
+      status: "live";
+      result: Extract<ModelExplanationResponse, { status: "live" }>;
+    }>
+  | Readonly<{
+      status: "degraded";
+      result: Extract<ModelExplanationResponse, { status: "degraded" }>;
+    }>;
 
 type SourceState =
   | Readonly<{ status: "idle" }>
@@ -108,6 +132,9 @@ export type ExperienceState = Readonly<{
   renders: Readonly<Record<ComparisonMode, RenderState>>;
   lowVolumeAcknowledged: boolean;
   playback: PlaybackState;
+  modelGroundingRevision: number;
+  modelAttemptsUsed: number;
+  modelState: ModelState;
   failure: ValidatedFailure | null;
 }>;
 
@@ -155,6 +182,14 @@ export type ExperienceAction =
   | Readonly<{ type: "playback-stopped" }>
   | Readonly<{ type: "playback-ended"; resultIdentity: string }>
   | Readonly<{
+      type: "model-request-started";
+      request: ModelExplanationRequest;
+    }>
+  | Readonly<{
+      type: "model-result-received";
+      result: ModelExplanationResponse;
+    }>
+  | Readonly<{
       type: "operation-failed";
       code: Exclude<ValidatedFailureCode, "invalid-profile" | "invalid-transition" | "stale-transition">;
       mode?: ComparisonMode;
@@ -187,6 +222,9 @@ const stoppedPlayback = (): PlaybackState =>
     resultIdentity: null,
   });
 
+const idleModelState = (): ModelState =>
+  Object.freeze({ status: "idle" as const });
+
 export function createInitialExperienceState(): ExperienceState {
   return Object.freeze({
     selectedProfileEntry: "manual" as const,
@@ -201,6 +239,9 @@ export function createInitialExperienceState(): ExperienceState {
     renders: idleRenders(),
     lowVolumeAcknowledged: false,
     playback: stoppedPlayback(),
+    modelGroundingRevision: 0,
+    modelAttemptsUsed: 0,
+    modelState: idleModelState(),
     failure: null,
   });
 }
@@ -237,6 +278,13 @@ function expectedResultIdentity(
     : null;
 }
 
+function invalidatedModelState(state: ExperienceState) {
+  return {
+    modelGroundingRevision: state.modelGroundingRevision + 1,
+    modelState: idleModelState(),
+  } as const;
+}
+
 export function comparisonResultIdentity(
   state: ExperienceState,
   mode: ExperienceComparisonMode,
@@ -256,6 +304,111 @@ export function currentTransformedResult(
     : null;
 }
 
+function average(values: readonly number[]): number {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function profileSummary(
+  profile: ConfirmedHearingProfile,
+): ModelExplanationRequest["profile"] {
+  const left = FREQUENCY_KEYS.map(
+    (frequency) => profile.leftThresholdsDbHl[frequency],
+  );
+  const right = FREQUENCY_KEYS.map(
+    (frequency) => profile.rightThresholdsDbHl[frequency],
+  );
+  const combined = left.map((value, index) => (value + right[index]!) / 2);
+  const lowerAverage = average(combined.slice(0, 3));
+  const higherAverage = average(combined.slice(3));
+  const range = Math.max(...combined) - Math.min(...combined);
+  const leftAverage = average(left);
+  const rightAverage = average(right);
+
+  return Object.freeze({
+    origin: profile.sourceType,
+    predefinedProfileId: profile.predefinedProfileId,
+    pattern:
+      higherAverage - lowerAverage >= 10
+        ? ("higher-frequency-emphasis" as const)
+        : range <= 15
+          ? ("broad-frequency" as const)
+          : ("mixed-frequency" as const),
+    earBalance:
+      leftAverage - rightAverage >= 10
+        ? ("left-more-attenuated" as const)
+        : rightAverage - leftAverage >= 10
+          ? ("right-more-attenuated" as const)
+          : ("similar" as const),
+  });
+}
+
+export function canRequestModelExplanation(state: ExperienceState): boolean {
+  const result = currentTransformedResult(state);
+
+  return (
+    state.confirmedProfile !== null &&
+    state.source.status === "ready" &&
+    result !== null &&
+    state.renders.simulated.status === "ready" &&
+    state.renders.simulated.sourceIdentity === result.sourceIdentity &&
+    state.renders.simulated.resultIdentity === result.resultIdentity &&
+    state.modelState.status !== "loading" &&
+    state.modelAttemptsUsed < MAX_MODEL_ATTEMPTS_PER_SESSION
+  );
+}
+
+export function createModelExplanationRequest(
+  state: ExperienceState,
+  runId: string,
+  attemptId: string,
+  transportResultIdentity: string,
+): ModelExplanationRequest | null {
+  if (!canRequestModelExplanation(state) || !state.confirmedProfile) {
+    return null;
+  }
+
+  const result = currentTransformedResult(state);
+
+  if (!result) {
+    return null;
+  }
+
+  return modelExplanationRequestSchema.parse({
+    operation: MODEL_OPERATION,
+    runId,
+    attemptId,
+    attemptNumber: state.modelAttemptsUsed + 1,
+    groundingRevision: state.modelGroundingRevision,
+    sourceIdentity: result.sourceIdentity,
+    resultIdentity: transportResultIdentity,
+    profile: profileSummary(state.confirmedProfile),
+    supportMode: state.supportMode,
+    interventionState: state.interventionState,
+    transformation: {
+      support:
+        state.supportMode === "none"
+          ? "unsupported"
+          : state.supportMode === "left-one-sided"
+            ? "left-ear-partial-compensation"
+            : "bilateral-partial-compensation",
+      television:
+        state.interventionState === "tv-on" ? "included" : "removed",
+      focusedSpeech: "unchanged",
+      overlappingSpeech: "unchanged",
+      kitchenRoom: "unchanged",
+      limitation: "illustrative-non-clinical",
+    },
+    scene: {
+      sceneId: "family-dinner",
+      sourcePackage: "four-synchronized-synthetic-stems",
+      focusedSpeech: "present",
+      overlappingSpeech: "present",
+      television: "present-in-source",
+      kitchenRoom: "sparse-events",
+    },
+  });
+}
+
 function confirmProfile(
   state: ExperienceState,
   profile: ConfirmedHearingProfile,
@@ -271,6 +424,7 @@ function confirmProfile(
     interventionState: "tv-on" as const,
     renders: idleRenders(),
     playback: stoppedPlayback(),
+    ...invalidatedModelState(state),
     failure: null,
   });
 }
@@ -301,6 +455,7 @@ export function experienceReducer(
             : state.source,
         renders: idleRenders(),
         playback: stoppedPlayback(),
+        ...invalidatedModelState(state),
         failure: null,
       });
     }
@@ -340,6 +495,7 @@ export function experienceReducer(
             : state.source,
         renders: idleRenders(),
         playback: stoppedPlayback(),
+        ...invalidatedModelState(state),
         failure: null,
       });
     }
@@ -437,6 +593,7 @@ export function experienceReducer(
           simulated: Object.freeze({ status: "idle" as const }),
         }),
         playback: stoppedPlayback(),
+        ...invalidatedModelState(state),
         failure: null,
       });
     }
@@ -467,6 +624,7 @@ export function experienceReducer(
         interventionState: action.interventionState,
         renders: idleRenders(),
         playback: stoppedPlayback(),
+        ...invalidatedModelState(state),
         failure: null,
       });
     }
@@ -496,6 +654,7 @@ export function experienceReducer(
         ...state,
         source: Object.freeze({ status: "loading" as const }),
         renders: idleRenders(),
+        ...invalidatedModelState(state),
         failure: null,
       });
     }
@@ -616,6 +775,75 @@ export function experienceReducer(
       });
     }
 
+    case "model-request-started": {
+      const currentResult = currentTransformedResult(state);
+      const request = action.request;
+
+      if (
+        !canRequestModelExplanation(state) ||
+        !currentResult ||
+        request.operation !== MODEL_OPERATION ||
+        request.attemptNumber !== state.modelAttemptsUsed + 1 ||
+        request.groundingRevision !== state.modelGroundingRevision ||
+        request.sourceIdentity !== currentResult.sourceIdentity ||
+        request.supportMode !== state.supportMode ||
+        request.interventionState !== state.interventionState
+      ) {
+        return rejectTransition(state, "stale-transition");
+      }
+
+      return Object.freeze({
+        ...state,
+        modelAttemptsUsed: state.modelAttemptsUsed + 1,
+        modelState: Object.freeze({
+          status: "loading" as const,
+          request,
+          canonicalResultIdentity: currentResult.resultIdentity,
+        }),
+        failure: null,
+      });
+    }
+
+    case "model-result-received": {
+      if (state.modelState.status !== "loading") {
+        return state;
+      }
+
+      const pending = state.modelState.request;
+      const pendingCanonicalResultIdentity =
+        state.modelState.canonicalResultIdentity;
+      const currentResult = currentTransformedResult(state);
+      const result = action.result;
+
+      if (
+        !currentResult ||
+        result.operation !== MODEL_OPERATION ||
+        result.runId !== pending.runId ||
+        result.attemptId !== pending.attemptId ||
+        result.attemptNumber !== pending.attemptNumber ||
+        result.groundingRevision !== pending.groundingRevision ||
+        result.groundingRevision !== state.modelGroundingRevision ||
+        result.sourceIdentity !== pending.sourceIdentity ||
+        result.sourceIdentity !== currentResult.sourceIdentity ||
+        result.resultIdentity !== pending.resultIdentity ||
+        pendingCanonicalResultIdentity !== currentResult.resultIdentity
+      ) {
+        return Object.freeze({
+          ...state,
+          modelState: idleModelState(),
+        });
+      }
+
+      return Object.freeze({
+        ...state,
+        modelState:
+          result.status === "live"
+            ? Object.freeze({ status: "live" as const, result })
+            : Object.freeze({ status: "degraded" as const, result }),
+        failure: null,
+      });
+    }
+
     case "operation-failed": {
       return Object.freeze({
         ...state,
@@ -651,6 +879,7 @@ export type VisibleExperienceState = Readonly<{
   reference: string;
   simulated: string;
   playback: string;
+  model: string;
   lastEdit: string | null;
   failure: string | null;
 }>;
@@ -736,6 +965,15 @@ export function projectVisibleExperienceState(
     ? `Last edit: ${state.lastEdit.ear} ear at ${state.lastEdit.frequency} Hz, ${state.lastEdit.previousValue || "missing"} → ${state.lastEdit.nextValue || "missing"} dB HL.`
     : null;
 
+  const model =
+    state.modelState.status === "loading"
+      ? "Live GPT explanation: generating for the current result."
+      : state.modelState.status === "live"
+        ? "Live GPT explanation: current and grounded."
+        : state.modelState.status === "degraded"
+          ? "Live GPT explanation: degraded; deterministic audio remains available."
+          : "Live GPT explanation: not requested.";
+
   return Object.freeze({
     profile,
     source,
@@ -755,6 +993,7 @@ export function projectVisibleExperienceState(
       state.renders.simulated,
     ),
     playback,
+    model,
     lastEdit,
     failure: state.failure?.message ?? null,
   });
