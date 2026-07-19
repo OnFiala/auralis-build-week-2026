@@ -38,6 +38,10 @@ export type ExperienceSupportMode = SupportMode;
 export type ExperienceInterventionState = InterventionState;
 export type ExperienceSpeakerPositionState = SpeakerPositionState;
 export type ExperienceProfileEntryOption = ProfileEntryOption;
+export type ExperienceCompletionState =
+  | "in-progress"
+  | "complete-live"
+  | "complete-degraded";
 
 export type ModelState =
   | Readonly<{ status: "idle" }>
@@ -141,6 +145,7 @@ export type ExperienceState = Readonly<{
   modelGroundingRevision: number;
   modelAttemptsUsed: number;
   modelState: ModelState;
+  completionState: ExperienceCompletionState;
   failure: ValidatedFailure | null;
 }>;
 
@@ -200,6 +205,8 @@ export type ExperienceAction =
       type: "model-result-received";
       result: ModelExplanationResponse;
     }>
+  | Readonly<{ type: "experience-completed" }>
+  | Readonly<{ type: "comparison-reset" }>
   | Readonly<{
       type: "operation-failed";
       code: Exclude<ValidatedFailureCode, "invalid-profile" | "invalid-transition" | "stale-transition">;
@@ -255,6 +262,7 @@ export function createInitialExperienceState(): ExperienceState {
     modelGroundingRevision: 0,
     modelAttemptsUsed: 0,
     modelState: idleModelState(),
+    completionState: "in-progress" as const,
     failure: null,
   });
 }
@@ -292,10 +300,11 @@ function expectedResultIdentity(
     : null;
 }
 
-function invalidatedModelState(state: ExperienceState) {
+function invalidatedModelAndCompletionState(state: ExperienceState) {
   return {
     modelGroundingRevision: state.modelGroundingRevision + 1,
     modelState: idleModelState(),
+    completionState: "in-progress" as const,
   } as const;
 }
 
@@ -317,6 +326,28 @@ export function currentTransformedResult(
         state.speakerPositionState,
       )
     : null;
+}
+
+export function canCompleteExperience(state: ExperienceState): boolean {
+  const result = currentTransformedResult(state);
+  const modelResult =
+    state.modelState.status === "live" || state.modelState.status === "degraded"
+      ? state.modelState.result
+      : null;
+
+  return (
+    state.confirmedProfile !== null &&
+    state.source.status === "ready" &&
+    result !== null &&
+    state.renders.reference.status !== "rendering" &&
+    state.renders.simulated.status === "ready" &&
+    state.renders.simulated.sourceIdentity === result.sourceIdentity &&
+    state.renders.simulated.resultIdentity === result.resultIdentity &&
+    state.playback.status === "stopped" &&
+    modelResult !== null &&
+    modelResult.sourceIdentity === result.sourceIdentity &&
+    modelResult.groundingRevision === state.modelGroundingRevision
+  );
 }
 
 function average(values: readonly number[]): number {
@@ -441,7 +472,7 @@ function confirmProfile(
     speakerPositionState: "original-position" as const,
     renders: idleRenders(),
     playback: stoppedPlayback(),
-    ...invalidatedModelState(state),
+    ...invalidatedModelAndCompletionState(state),
     failure: null,
   });
 }
@@ -473,7 +504,7 @@ export function experienceReducer(
             : state.source,
         renders: idleRenders(),
         playback: stoppedPlayback(),
-        ...invalidatedModelState(state),
+        ...invalidatedModelAndCompletionState(state),
         failure: null,
       });
     }
@@ -514,7 +545,7 @@ export function experienceReducer(
             : state.source,
         renders: idleRenders(),
         playback: stoppedPlayback(),
-        ...invalidatedModelState(state),
+        ...invalidatedModelAndCompletionState(state),
         failure: null,
       });
     }
@@ -614,7 +645,7 @@ export function experienceReducer(
           simulated: Object.freeze({ status: "idle" as const }),
         }),
         playback: stoppedPlayback(),
-        ...invalidatedModelState(state),
+        ...invalidatedModelAndCompletionState(state),
         failure: null,
       });
     }
@@ -645,7 +676,7 @@ export function experienceReducer(
         interventionState: action.interventionState,
         renders: idleRenders(),
         playback: stoppedPlayback(),
-        ...invalidatedModelState(state),
+        ...invalidatedModelAndCompletionState(state),
         failure: null,
       });
     }
@@ -676,7 +707,7 @@ export function experienceReducer(
         speakerPositionState: action.speakerPositionState,
         renders: idleRenders(),
         playback: stoppedPlayback(),
-        ...invalidatedModelState(state),
+        ...invalidatedModelAndCompletionState(state),
         failure: null,
       });
     }
@@ -706,7 +737,7 @@ export function experienceReducer(
         ...state,
         source: Object.freeze({ status: "loading" as const }),
         renders: idleRenders(),
-        ...invalidatedModelState(state),
+        ...invalidatedModelAndCompletionState(state),
         failure: null,
       });
     }
@@ -751,6 +782,7 @@ export function experienceReducer(
           ...state.renders,
           [action.mode]: Object.freeze({ status: "rendering" as const }),
         }),
+        completionState: "in-progress" as const,
         failure: null,
       });
     }
@@ -794,6 +826,7 @@ export function experienceReducer(
           speakerPositionState: state.speakerPositionState,
           resultIdentity: action.resultIdentity,
         }),
+        completionState: "in-progress" as const,
         failure: null,
       });
     }
@@ -855,6 +888,7 @@ export function experienceReducer(
           request,
           canonicalResultIdentity: currentResult.resultIdentity,
         }),
+        completionState: "in-progress" as const,
         failure: null,
       });
     }
@@ -899,6 +933,37 @@ export function experienceReducer(
       });
     }
 
+    case "experience-completed": {
+      if (
+        !canCompleteExperience(state) ||
+        (state.modelState.status !== "live" &&
+          state.modelState.status !== "degraded")
+      ) {
+        return rejectTransition(state, "invalid-transition");
+      }
+
+      return Object.freeze({
+        ...state,
+        completionState:
+          state.modelState.status === "live"
+            ? ("complete-live" as const)
+            : ("complete-degraded" as const),
+        failure: null,
+      });
+    }
+
+    case "comparison-reset": {
+      if (state.completionState === "in-progress") {
+        return rejectTransition(state, "invalid-transition");
+      }
+
+      return Object.freeze({
+        ...createInitialExperienceState(),
+        modelGroundingRevision: state.modelGroundingRevision + 1,
+        modelAttemptsUsed: state.modelAttemptsUsed,
+      });
+    }
+
     case "operation-failed": {
       return Object.freeze({
         ...state,
@@ -920,6 +985,7 @@ export function experienceReducer(
           speakerPositionState: null,
           resultIdentity: null,
         }),
+        completionState: "in-progress" as const,
         failure: failure(action.code),
       });
     }
@@ -940,6 +1006,20 @@ export type VisibleExperienceState = Readonly<{
   model: string;
   lastEdit: string | null;
   failure: string | null;
+}>;
+
+export type TerminalCompletionProjection = Readonly<{
+  status: "complete-live" | "complete-degraded";
+  profile: string;
+  profileOrigin: "Manual" | "Synthetic predefined";
+  support: string;
+  television: string;
+  speakerPosition: string;
+  resultIdentity: string;
+  explanationStatus: "Live GPT" | "Degraded";
+  explanationAvailability: string;
+  limitation: string;
+  nextAction: string;
 }>;
 
 const supportLabels: Record<SupportMode, string> = {
@@ -970,6 +1050,71 @@ const speakerPositionSummaries: Record<SpeakerPositionState, string> = {
   "closer-in-front":
     "Only the important speaker moves to the front at 0.8 m with bounded 2.5 dB focused-speech gain; competing scene content remains unchanged.",
 };
+
+function terminalResultIdentity(resultIdentity: string): string {
+  let first = 0x811c9dc5;
+  let second = 0x9e3779b9;
+
+  for (let index = 0; index < resultIdentity.length; index += 1) {
+    const code = resultIdentity.charCodeAt(index);
+    first = Math.imul(first ^ code, 0x01000193);
+    second = Math.imul(second ^ code, 0x85ebca6b);
+    second ^= second >>> 13;
+  }
+
+  return `auralis-result-v1-${(first >>> 0).toString(16).padStart(8, "0")}${(
+    second >>> 0
+  )
+    .toString(16)
+    .padStart(8, "0")}`;
+}
+
+export function projectTerminalCompletion(
+  state: ExperienceState,
+): TerminalCompletionProjection | null {
+  const result = currentTransformedResult(state);
+  const profile = state.confirmedProfile;
+  const completionMatchesModel =
+    (state.completionState === "complete-live" &&
+      state.modelState.status === "live") ||
+    (state.completionState === "complete-degraded" &&
+      state.modelState.status === "degraded");
+
+  if (
+    !result ||
+    !profile ||
+    !canCompleteExperience(state) ||
+    !completionMatchesModel
+  ) {
+    return null;
+  }
+
+  const isLive = state.modelState.status === "live";
+
+  return Object.freeze({
+    status: isLive ? ("complete-live" as const) : ("complete-degraded" as const),
+    profile:
+      profile.sourceType === "manual"
+        ? "Manual audiogram"
+        : profile.displayName,
+    profileOrigin:
+      profile.sourceType === "manual"
+        ? ("Manual" as const)
+        : ("Synthetic predefined" as const),
+    support: supportLabels[state.supportMode],
+    television: interventionLabels[state.interventionState],
+    speakerPosition: speakerPositionLabels[state.speakerPositionState],
+    resultIdentity: terminalResultIdentity(result.resultIdentity),
+    explanationStatus: isLive ? ("Live GPT" as const) : ("Degraded" as const),
+    explanationAvailability: isLive
+      ? "A fresh grounded explanation is available for this result."
+      : "Live explanation is unavailable; the deterministic comparison remains available.",
+    limitation:
+      "This experience is illustrative; it is not a diagnosis, prescription, hearing-aid fitting, or prediction of individual perception.",
+    nextAction:
+      "Use this comparison to discuss communication conditions with the people around you.",
+  });
+}
 
 function renderLabel(
   mode: ComparisonMode,

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canCompleteExperience,
   canRequestModelExplanation,
   createInitialExperienceState,
   createModelExplanationRequest,
   currentTransformedResult,
   experienceReducer,
+  projectTerminalCompletion,
   projectVisibleExperienceState,
   type ExperienceState,
 } from "./experience";
@@ -135,8 +137,15 @@ function confirmedState(): ExperienceState {
   });
 }
 
-function modelReadyState(): ExperienceState {
-  let state = confirmedState();
+function modelReadyState(
+  initialState = confirmedState(),
+  options: Readonly<{
+    supportMode?: "none" | "left-one-sided" | "bilateral";
+    interventionState?: "tv-on" | "tv-off";
+    speakerPositionState?: "original-position" | "closer-in-front";
+  }> = {},
+): ExperienceState {
+  let state = initialState;
   state = experienceReducer(state, {
     type: "low-volume-acknowledgement-changed",
     acknowledged: true,
@@ -149,6 +158,30 @@ function modelReadyState(): ExperienceState {
     frameCount: 1536000,
     durationSeconds: 64,
   });
+  if (options.supportMode && options.supportMode !== state.supportMode) {
+    state = experienceReducer(state, {
+      type: "support-mode-changed",
+      supportMode: options.supportMode,
+    });
+  }
+  if (
+    options.interventionState &&
+    options.interventionState !== state.interventionState
+  ) {
+    state = experienceReducer(state, {
+      type: "intervention-state-changed",
+      interventionState: options.interventionState,
+    });
+  }
+  if (
+    options.speakerPositionState &&
+    options.speakerPositionState !== state.speakerPositionState
+  ) {
+    state = experienceReducer(state, {
+      type: "speaker-position-changed",
+      speakerPositionState: options.speakerPositionState,
+    });
+  }
   state = experienceReducer(state, {
     type: "render-started",
     mode: "simulated",
@@ -166,6 +199,63 @@ function modelReadyState(): ExperienceState {
   });
 
   return experienceReducer(state, { type: "playback-stopped" });
+}
+
+function resolvedModelState(
+  status: "live" | "degraded",
+  initialState = modelReadyState(),
+): ExperienceState {
+  let state = initialState;
+  const request = createModelExplanationRequest(
+    state,
+    "completion-run",
+    `completion-attempt-${state.modelAttemptsUsed + 1}`,
+    `completion-result-${state.modelAttemptsUsed + 1}`,
+  )!;
+
+  state = experienceReducer(state, {
+    type: "model-request-started",
+    request,
+  });
+  state = experienceReducer(state, {
+    type: "model-result-received",
+    result:
+      status === "live"
+        ? {
+            status: "live",
+            operation: request.operation,
+            runId: request.runId,
+            attemptId: request.attemptId,
+            attemptNumber: request.attemptNumber,
+            groundingRevision: request.groundingRevision,
+            sourceIdentity: request.sourceIdentity,
+            resultIdentity: request.resultIdentity,
+            model: MODEL_ID,
+            responseId: `resp-${request.attemptNumber}`,
+            sceneFraming: "A synthetic family dinner is in progress.",
+            audibleChange:
+              "The explanation reflects the current support and interventions.",
+            unchanged: "The source identity and timeline remain unchanged.",
+            limitation: "Individual perception can differ.",
+          }
+        : {
+            status: "degraded",
+            operation: request.operation,
+            runId: request.runId,
+            attemptId: request.attemptId,
+            attemptNumber: request.attemptNumber,
+            groundingRevision: request.groundingRevision,
+            sourceIdentity: request.sourceIdentity,
+            resultIdentity: request.resultIdentity,
+            model: MODEL_ID,
+            responseId: null,
+            reason: "provider-failure",
+            message:
+              "Live GPT explanation is unavailable. The deterministic audio comparison remains available.",
+          },
+  });
+
+  return state;
 }
 
 describe("manual hearing profile", () => {
@@ -1435,6 +1525,202 @@ describe("canonical live and degraded model state", () => {
 
     expect(state.playback.status).toBe("playing");
     expect(state.modelState.status).toBe("degraded");
+  });
+});
+
+describe("canonical terminal completion", () => {
+  it("blocks completion without a confirmed current result or while the model is idle or loading", () => {
+    const initial = createInitialExperienceState();
+    const withoutProfile = experienceReducer(initial, {
+      type: "experience-completed",
+    });
+    const withoutModel = experienceReducer(modelReadyState(), {
+      type: "experience-completed",
+    });
+    let loading = modelReadyState();
+    const request = createModelExplanationRequest(
+      loading,
+      "completion-run",
+      "completion-loading-attempt",
+      "completion-loading-result",
+    )!;
+    loading = experienceReducer(loading, {
+      type: "model-request-started",
+      request,
+    });
+    const whileLoading = experienceReducer(loading, {
+      type: "experience-completed",
+    });
+
+    expect(withoutProfile.completionState).toBe("in-progress");
+    expect(withoutProfile.failure?.code).toBe("invalid-transition");
+    expect(withoutModel.completionState).toBe("in-progress");
+    expect(withoutModel.failure?.code).toBe("invalid-transition");
+    expect(whileLoading.modelState.status).toBe("loading");
+    expect(whileLoading.completionState).toBe("in-progress");
+    expect(whileLoading.failure?.code).toBe("invalid-transition");
+    expect(projectTerminalCompletion(whileLoading)).toBeNull();
+  });
+
+  it("permits live and degraded completion without changing deterministic audio", () => {
+    for (const outcome of ["live", "degraded"] as const) {
+      let state = resolvedModelState(outcome);
+      const resultIdentity = currentTransformedResult(state)!.resultIdentity;
+
+      expect(canCompleteExperience(state)).toBe(true);
+      state = experienceReducer(state, { type: "experience-completed" });
+
+      expect(state.completionState).toBe(
+        outcome === "live" ? "complete-live" : "complete-degraded",
+      );
+      expect(projectTerminalCompletion(state)?.explanationStatus).toBe(
+        outcome === "live" ? "Live GPT" : "Degraded",
+      );
+      expect(currentTransformedResult(state)!.resultIdentity).toBe(resultIdentity);
+    }
+  });
+
+  it("projects only current canonical summary fields and an opaque deterministic result identity", () => {
+    let selected = createInitialExperienceState();
+    selected = experienceReducer(selected, {
+      type: "profile-entry-selected",
+      entryOption: "asymmetric-hearing-loss",
+    });
+    selected = experienceReducer(selected, {
+      type: "predefined-profile-confirmed",
+      profileId: "asymmetric-hearing-loss",
+      sourceIdentity: SOURCE_IDENTITY,
+    });
+    let state = resolvedModelState(
+      "live",
+      modelReadyState(selected, {
+        supportMode: "bilateral",
+        interventionState: "tv-off",
+        speakerPositionState: "closer-in-front",
+      }),
+    );
+    const rawProfileIdentity = state.confirmedProfile!.profileId;
+    const rawResultIdentity = currentTransformedResult(state)!.resultIdentity;
+    state = experienceReducer(state, { type: "experience-completed" });
+
+    const terminal = projectTerminalCompletion(state)!;
+    const serialized = JSON.stringify(terminal);
+
+    expect(terminal).toMatchObject({
+      status: "complete-live",
+      profile: "Asymmetric hearing loss",
+      profileOrigin: "Synthetic predefined",
+      support: "Bilateral support",
+      television: "TV off",
+      speakerPosition: "Closer, in front",
+      explanationStatus: "Live GPT",
+    });
+    expect(terminal.resultIdentity).toMatch(
+      /^auralis-result-v1-[a-f0-9]{16}$/,
+    );
+    expect(projectTerminalCompletion(state)?.resultIdentity).toBe(
+      terminal.resultIdentity,
+    );
+    expect(terminal.resultIdentity).not.toBe(rawResultIdentity);
+    expect(serialized).not.toContain(rawProfileIdentity);
+    expect(serialized).not.toMatch(
+      /leftThresholdsDbHl|rightThresholdsDbHl|frequencyGridHz/,
+    );
+    expect(Object.values(terminal).some(Array.isArray)).toBe(false);
+  });
+
+  it("invalidates completion after every upstream change and fails closed on a stale result identity", () => {
+    const completed = experienceReducer(resolvedModelState("live"), {
+      type: "experience-completed",
+    });
+    const upstreamActions = [
+      {
+        type: "profile-entry-selected",
+        entryOption: "high-frequency-hearing-loss",
+      },
+      { type: "support-mode-changed", supportMode: "bilateral" },
+      { type: "intervention-state-changed", interventionState: "tv-off" },
+      {
+        type: "speaker-position-changed",
+        speakerPositionState: "closer-in-front",
+      },
+      { type: "source-load-started" },
+    ] as const;
+
+    for (const action of upstreamActions) {
+      const invalidated = experienceReducer(completed, action);
+      expect(invalidated.completionState).toBe("in-progress");
+      expect(projectTerminalCompletion(invalidated)).toBeNull();
+    }
+
+    const simulated = completed.renders.simulated;
+    if (simulated.status !== "ready") {
+      throw new Error("Expected a validated simulated result.");
+    }
+    const staleResultState: ExperienceState = Object.freeze({
+      ...completed,
+      renders: Object.freeze({
+        ...completed.renders,
+        simulated: Object.freeze({
+          ...simulated,
+          resultIdentity: "stale-result-identity",
+        }),
+      }),
+    });
+
+    expect(canCompleteExperience(staleResultState)).toBe(false);
+    expect(projectTerminalCompletion(staleResultState)).toBeNull();
+
+    const retryRequest = createModelExplanationRequest(
+      completed,
+      "completion-run",
+      "completion-retry",
+      "completion-retry-result",
+    )!;
+    const retrying = experienceReducer(completed, {
+      type: "model-request-started",
+      request: retryRequest,
+    });
+    expect(retrying.modelState.status).toBe("loading");
+    expect(retrying.completionState).toBe("in-progress");
+  });
+
+  it("resets completion, profile, playback and explanation while permitting another comparison", () => {
+    let completed = experienceReducer(resolvedModelState("degraded"), {
+      type: "experience-completed",
+    });
+    const attemptsUsed = completed.modelAttemptsUsed;
+    const groundingRevision = completed.modelGroundingRevision;
+
+    completed = experienceReducer(completed, { type: "comparison-reset" });
+
+    expect(completed.completionState).toBe("in-progress");
+    expect(completed.confirmedProfile).toBeNull();
+    expect(completed.comparisonPlan).toBeNull();
+    expect(completed.source.status).toBe("idle");
+    expect(completed.playback.status).toBe("stopped");
+    expect(completed.modelState.status).toBe("idle");
+    expect(completed.lowVolumeAcknowledged).toBe(false);
+    expect(completed.modelAttemptsUsed).toBe(attemptsUsed);
+    expect(completed.modelGroundingRevision).toBe(groundingRevision + 1);
+    expect(projectTerminalCompletion(completed)).toBeNull();
+    expect(
+      FREQUENCY_KEYS.map(
+        (frequency) => completed.manualDraft.right[frequency],
+      ),
+    ).toEqual(["25", "25", "25", "25", "25", "25"]);
+    expect(
+      FREQUENCY_KEYS.map((frequency) => completed.manualDraft.left[frequency]),
+    ).toEqual(["25", "25", "25", "25", "25", "25"]);
+
+    const nextComparison = experienceReducer(completed, {
+      type: "manual-value-changed",
+      ear: "right",
+      frequency: "2000",
+      value: "30",
+    });
+    expect(nextComparison.failure).toBeNull();
+    expect(nextComparison.manualDraft.right["2000"]).toBe("30");
   });
 });
 

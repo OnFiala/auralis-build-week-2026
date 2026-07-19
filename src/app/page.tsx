@@ -10,12 +10,14 @@ import {
 import { requestLiveExplanation } from "../browser/model-client";
 import { MAX_MODEL_ATTEMPTS_PER_SESSION } from "../contracts/runtime";
 import {
+  canCompleteExperience,
   canRequestModelExplanation,
   comparisonResultIdentity,
   createInitialExperienceState,
   createModelExplanationRequest,
   currentTransformedResult,
   experienceReducer,
+  projectTerminalCompletion,
   projectVisibleExperienceState,
   type ExperienceComparisonMode,
   type ExperienceInterventionState,
@@ -84,6 +86,8 @@ export default function HomePage() {
   const runIdRef = useRef<string | null>(null);
   const modelRequestInFlightRef = useRef(false);
   const visible = projectVisibleExperienceState(experience);
+  const terminalCompletion = projectTerminalCompletion(experience);
+  const completionEligible = canCompleteExperience(experience);
   const selectedTransformation = currentTransformedResult(experience);
   const isRendering =
     experience.renders.reference.status === "rendering" ||
@@ -271,6 +275,16 @@ export default function HomePage() {
     } finally {
       modelRequestInFlightRef.current = false;
     }
+  }
+
+  function completeExperience() {
+    dispatch({ type: "experience-completed" });
+  }
+
+  function startAnotherComparison() {
+    audioEngineRef.current?.stop();
+    runIdRef.current = null;
+    dispatch({ type: "comparison-reset" });
   }
 
   return (
@@ -793,6 +807,85 @@ export default function HomePage() {
             <p>{experience.modelState.result.message}</p>
           </div>
         ) : null}
+      </section>
+
+      <section aria-labelledby="completion-heading">
+        <p className="step-label">Step 5</p>
+        <h2 id="completion-heading">Complete this comparison</h2>
+        <p>
+          Completion is available only for the current validated deterministic
+          result after one explicit live-explanation attempt has finished.
+        </p>
+        <button
+          type="button"
+          onClick={completeExperience}
+          disabled={
+            !completionEligible || experience.completionState !== "in-progress"
+          }
+        >
+          Complete experience
+        </button>
+
+        {terminalCompletion ? (
+          <div
+            className="completion-result"
+            aria-labelledby="completion-result-heading"
+          >
+            <p className="model-badge">
+              {terminalCompletion.status === "complete-live"
+                ? "Complete — live"
+                : "Complete — degraded"}
+            </p>
+            <h3 id="completion-result-heading">
+              Your current Auralis comparison
+            </h3>
+            <dl className="completion-summary">
+              <div>
+                <dt>Profile</dt>
+                <dd>{terminalCompletion.profile}</dd>
+              </div>
+              <div>
+                <dt>Profile origin</dt>
+                <dd>{terminalCompletion.profileOrigin}</dd>
+              </div>
+              <div>
+                <dt>Support</dt>
+                <dd>{terminalCompletion.support}</dd>
+              </div>
+              <div>
+                <dt>Television</dt>
+                <dd>{terminalCompletion.television}</dd>
+              </div>
+              <div>
+                <dt>Important speaker</dt>
+                <dd>{terminalCompletion.speakerPosition}</dd>
+              </div>
+              <div>
+                <dt>Deterministic result identity</dt>
+                <dd>
+                  <code>{terminalCompletion.resultIdentity}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Explanation status</dt>
+                <dd>{terminalCompletion.explanationStatus}</dd>
+              </div>
+            </dl>
+            <p>{terminalCompletion.explanationAvailability}</p>
+            <p className="limitation">{terminalCompletion.limitation}</p>
+            <p>
+              <strong>Next action:</strong> {terminalCompletion.nextAction}
+            </p>
+            <button type="button" onClick={startAnotherComparison}>
+              Start another comparison
+            </button>
+          </div>
+        ) : (
+          <p className="state-line">
+            Completion state: in progress. Finish the current deterministic
+            result and one explanation attempt before completing.
+          </p>
+        )}
       </section>
     </main>
   );
