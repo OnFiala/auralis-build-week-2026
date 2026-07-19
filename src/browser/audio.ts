@@ -13,6 +13,7 @@ import {
   type ComparisonMode,
   type ComparisonPlan,
   type InterventionState,
+  type SpeakerPositionState,
   type SourceContributionPlan,
   type SpectralFilter,
   type SupportMode,
@@ -80,6 +81,7 @@ export type PlaybackEvidence = Readonly<{
   mode: ComparisonMode;
   supportMode: SupportMode | null;
   interventionState: InterventionState;
+  speakerPositionState: SpeakerPositionState;
   peakDbFs: number;
   durationSeconds: number;
   sampleRate: number;
@@ -315,6 +317,7 @@ export class BrowserAudioEngine {
     mode: ComparisonMode,
     supportMode: SupportMode,
     interventionState: InterventionState,
+    speakerPositionState: SpeakerPositionState,
     plan: ComparisonPlan,
     lowVolumeAcknowledged: boolean,
     callbacks: Readonly<{ onEnded: () => void; onInterrupted: () => void }>,
@@ -329,6 +332,7 @@ export class BrowserAudioEngine {
       mode,
       supportMode,
       interventionState,
+      speakerPositionState,
       lowVolumeAcknowledged,
       loadedSource?.manifest.sourceIdentity ?? null,
     );
@@ -343,6 +347,7 @@ export class BrowserAudioEngine {
       mode,
       supportMode,
       interventionState,
+      speakerPositionState,
       plan,
       loadedSource,
     );
@@ -398,6 +403,7 @@ export class BrowserAudioEngine {
       mode,
       supportMode: mode === "reference" ? null : supportMode,
       interventionState,
+      speakerPositionState,
       peakDbFs: rendered.validation.peakDbFs,
       durationSeconds: rendered.validation.durationSeconds,
       sampleRate: rendered.validation.sampleRate,
@@ -489,13 +495,23 @@ export class BrowserAudioEngine {
     mode: ComparisonMode,
     supportMode: SupportMode,
     interventionState: InterventionState,
+    speakerPositionState: SpeakerPositionState,
     plan: ComparisonPlan,
     source: LoadedSource,
   ): Promise<RenderedResult> {
     const selectedResult =
       mode === "reference"
-        ? referenceResultForIntervention(plan, interventionState)
-        : resultForSupportMode(plan, supportMode, interventionState);
+        ? referenceResultForIntervention(
+            plan,
+            interventionState,
+            speakerPositionState,
+          )
+        : resultForSupportMode(
+            plan,
+            supportMode,
+            interventionState,
+            speakerPositionState,
+          );
     const resultIdentity = selectedResult.resultIdentity;
     const cached = this.renderedResults.get(resultIdentity);
 
@@ -524,14 +540,34 @@ export class BrowserAudioEngine {
 
       const node = context.createBufferSource();
       node.buffer = buffer;
-      node.connect(leftInput);
-      node.connect(rightInput);
+
+      if (asset.file === "focused-speech.wav") {
+        const leftSpatialGain = context.createGain();
+        const rightSpatialGain = context.createGain();
+        leftSpatialGain.gain.value =
+          selectedResult.focusedSpeechSpatial.leftChannelGain;
+        rightSpatialGain.gain.value =
+          selectedResult.focusedSpeechSpatial.rightChannelGain;
+        node.connect(leftSpatialGain);
+        node.connect(rightSpatialGain);
+        leftSpatialGain.connect(leftInput);
+        rightSpatialGain.connect(rightInput);
+      } else {
+        node.connect(leftInput);
+        node.connect(rightInput);
+      }
+
       return [node];
     });
 
     const transformed =
       mode === "simulated"
-        ? resultForSupportMode(plan, supportMode, interventionState)
+        ? resultForSupportMode(
+            plan,
+            supportMode,
+            interventionState,
+            speakerPositionState,
+          )
         : null;
     const leftFilters = transformed?.leftFilters ?? [];
     const rightFilters = transformed?.rightFilters ?? [];

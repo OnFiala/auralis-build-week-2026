@@ -33,10 +33,11 @@ const request: ModelExplanationRequest = {
   },
   supportMode: "left-one-sided",
   interventionState: "tv-off",
+  speakerPositionState: "closer-in-front",
   transformation: {
     support: "left-ear-partial-compensation",
     television: "removed",
-    focusedSpeech: "unchanged",
+    focusedSpeechPosition: "closer-in-front",
     overlappingSpeech: "unchanged",
     kitchenRoom: "unchanged",
     limitation: "illustrative-non-clinical",
@@ -61,12 +62,13 @@ const providerOutput: ProviderExplanation = {
   profilePattern: request.profile.pattern,
   supportMode: request.supportMode,
   interventionState: request.interventionState,
+  speakerPositionState: request.speakerPositionState,
   sceneFraming:
     "A synthetic family conversation continues around a shared dinner table.",
   audibleChange:
-    "Left-ear support is active and TV off removes the television contribution.",
+    "Left-ear support is active, TV off removes the television contribution, and Closer, in front places the important speaker centrally.",
   unchanged:
-    "Focused speech, overlapping speech, sparse room events, source identity and timing remain unchanged.",
+    "Overlapping speech, sparse room events, source identity and timing remain unchanged.",
   limitation: "Individual perception can differ.",
 };
 
@@ -170,6 +172,9 @@ describe("server model application", () => {
     );
     expect(calls.input?.input).toContain('"supportMode":"left-one-sided"');
     expect(calls.input?.input).toContain('"interventionState":"tv-off"');
+    expect(calls.input?.input).toContain(
+      '"speakerPositionState":"closer-in-front"',
+    );
   });
 
   it.each([
@@ -219,8 +224,15 @@ describe("server model application", () => {
       {
         output: {
           ...providerOutput,
+          speakerPositionState: "original-position",
+        },
+        reason: "grounding-mismatch",
+      },
+      {
+        output: {
+          ...providerOutput,
           audibleChange:
-            "Left-ear support with TV off will improve your hearing.",
+            "Left-ear support with TV off and Closer, in front will improve your hearing.",
         },
         reason: "claim-violation",
       },

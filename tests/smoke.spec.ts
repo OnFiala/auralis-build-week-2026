@@ -25,7 +25,9 @@ test("public walking skeleton reaches its trusted health boundary", async ({ pag
   await expect(page.getByText("The hearing experience is not implemented yet.")).toBeVisible();
 
   await page.getByRole("button", { name: "Check system status" }).click();
-  await expect(page.getByRole("status")).toHaveText("System status: ready.");
+  await expect(
+    page.getByRole("status").filter({ hasText: "System status: ready." }),
+  ).toHaveText("System status: ready.");
 
   const healthUrl = authenticatedOrigin
     ? new URL("/api/health", authenticatedOrigin).toString()

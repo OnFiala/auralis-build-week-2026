@@ -26,9 +26,15 @@ import {
   validateRenderedAudio,
 } from "./safety";
 import {
+  CLOSER_SPEAKER_AZIMUTH_DEGREES,
+  CLOSER_SPEAKER_DISTANCE_METERS,
+  ORIGINAL_SPEAKER_AZIMUTH_DEGREES,
+  ORIGINAL_SPEAKER_DISTANCE_METERS,
+  SPEAKER_POSITION_MAX_DISTANCE_GAIN_DB,
   SUPPORT_MAX_COMPENSATION_DB,
   assertValidComparisonPlan,
   createComparisonPlan,
+  focusedSpeechSpatialPlanForState,
   referenceResultForIntervention,
   resultForSupportMode,
   sourceContributionsForIntervention,
@@ -153,6 +159,7 @@ function modelReadyState(): ExperienceState {
     mode: "simulated",
     supportMode: state.supportMode,
     interventionState: state.interventionState,
+    speakerPositionState: state.speakerPositionState,
     sourceIdentity: result.sourceIdentity,
     resultIdentity: result.resultIdentity,
     peakDbFs: -9,
@@ -591,6 +598,7 @@ describe("coherent TV-off intervention", () => {
       mode: "simulated",
       supportMode: "none",
       interventionState: "tv-on",
+      speakerPositionState: "original-position",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity: tvOnIdentity,
       peakDbFs: -9,
@@ -634,6 +642,7 @@ describe("coherent TV-off intervention", () => {
       mode: "simulated",
       supportMode: "none",
       interventionState: "tv-on",
+      speakerPositionState: "original-position",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity: tvOnIdentity,
       peakDbFs: -9,
@@ -646,6 +655,7 @@ describe("coherent TV-off intervention", () => {
       mode: "simulated",
       supportMode: "none",
       interventionState: "tv-off",
+      speakerPositionState: "original-position",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity: tvOffIdentity,
       peakDbFs: -9,
@@ -658,6 +668,190 @@ describe("coherent TV-off intervention", () => {
 
     state = experienceReducer(state, { type: "playback-stopped" });
     expect(state.playback.status).toBe("stopped");
+  });
+});
+
+describe("genuine speaker-position intervention", () => {
+  it("uses the approved bounded spatial mapping and changes only focused speech", () => {
+    const plan = createComparisonPlan(confirmedProfile(), SOURCE_IDENTITY);
+    const original = resultForSupportMode(
+      plan,
+      "none",
+      "tv-on",
+      "original-position",
+    );
+    const improved = resultForSupportMode(
+      plan,
+      "none",
+      "tv-on",
+      "closer-in-front",
+    );
+
+    expect(original.focusedSpeechSpatial).toEqual(
+      focusedSpeechSpatialPlanForState("original-position"),
+    );
+    expect(original.focusedSpeechSpatial).toMatchObject({
+      state: "original-position",
+      azimuthDegrees: ORIGINAL_SPEAKER_AZIMUTH_DEGREES,
+      distanceMeters: ORIGINAL_SPEAKER_DISTANCE_METERS,
+      distanceGainDb: 0,
+    });
+    expect(improved.focusedSpeechSpatial).toEqual(
+      focusedSpeechSpatialPlanForState("closer-in-front"),
+    );
+    expect(improved.focusedSpeechSpatial).toMatchObject({
+      state: "closer-in-front",
+      azimuthDegrees: CLOSER_SPEAKER_AZIMUTH_DEGREES,
+      distanceMeters: CLOSER_SPEAKER_DISTANCE_METERS,
+      distanceGainDb: SPEAKER_POSITION_MAX_DISTANCE_GAIN_DB,
+    });
+    expect(improved.focusedSpeechSpatial.leftChannelGain).not.toBe(
+      original.focusedSpeechSpatial.leftChannelGain,
+    );
+    expect(improved.focusedSpeechSpatial.rightChannelGain).not.toBe(
+      original.focusedSpeechSpatial.rightChannelGain,
+    );
+    expect(improved.sourceContributions).toEqual(
+      original.sourceContributions,
+    );
+    expect(improved.leftFilters).toEqual(original.leftFilters);
+    expect(improved.rightFilters).toEqual(original.rightFilters);
+    expect(improved.sourceIdentity).toBe(original.sourceIdentity);
+    expect(improved.resultIdentity).not.toBe(original.resultIdentity);
+  });
+
+  it("is deterministic across every profile, support and TV state", () => {
+    const profiles = [
+      confirmedProfile(),
+      ...PREDEFINED_HEARING_PROFILES.map((fixture) =>
+        confirmPredefinedProfile(fixture.id, 0),
+      ),
+    ];
+
+    for (const profile of profiles) {
+      const first = createComparisonPlan(profile, SOURCE_IDENTITY);
+      const second = createComparisonPlan(profile, SOURCE_IDENTITY);
+
+      for (const supportMode of [
+        "none",
+        "left-one-sided",
+        "bilateral",
+      ] as const) {
+        for (const interventionState of ["tv-on", "tv-off"] as const) {
+          const original = resultForSupportMode(
+            first,
+            supportMode,
+            interventionState,
+            "original-position",
+          );
+          const improved = resultForSupportMode(
+            first,
+            supportMode,
+            interventionState,
+            "closer-in-front",
+          );
+          const repeated = resultForSupportMode(
+            second,
+            supportMode,
+            interventionState,
+            "closer-in-front",
+          );
+
+          expect(improved).toEqual(repeated);
+          expect(improved.sourceIdentity).toBe(SOURCE_IDENTITY);
+          expect(improved.sourceContributions).toEqual(
+            original.sourceContributions,
+          );
+          expect(improved.leftFilters).toEqual(original.leftFilters);
+          expect(improved.rightFilters).toEqual(original.rightFilters);
+          expect(improved.resultIdentity).not.toBe(original.resultIdentity);
+        }
+      }
+    }
+  });
+
+  it("keeps speaker position canonical and rejects stale playback", () => {
+    let state = confirmedState();
+    expect(state.speakerPositionState).toBe("original-position");
+    expect(projectVisibleExperienceState(state)).toMatchObject({
+      speakerPosition: "Speaker position: Original position.",
+      speakerPositionSummary:
+        "The important speaker remains at the manifest position: 12° left and 1.2 m away.",
+    });
+
+    state = experienceReducer(state, {
+      type: "low-volume-acknowledgement-changed",
+      acknowledged: true,
+    });
+    state = experienceReducer(state, { type: "source-load-started" });
+    state = experienceReducer(state, {
+      type: "source-ready",
+      sourceIdentity: SOURCE_IDENTITY,
+      sampleRate: 24000,
+      frameCount: 1536000,
+      durationSeconds: 64,
+    });
+    state = experienceReducer(state, {
+      type: "render-started",
+      mode: "simulated",
+    });
+
+    const originalIdentity = currentTransformedResult(state)!.resultIdentity;
+    state = experienceReducer(state, {
+      type: "playback-started",
+      mode: "simulated",
+      supportMode: "none",
+      interventionState: "tv-on",
+      speakerPositionState: "original-position",
+      sourceIdentity: SOURCE_IDENTITY,
+      resultIdentity: originalIdentity,
+      peakDbFs: -9,
+    });
+
+    const rejected = experienceReducer(state, {
+      type: "speaker-position-changed",
+      speakerPositionState: "closer-in-front",
+    });
+    expect(rejected.failure?.code).toBe("invalid-transition");
+    expect(rejected.speakerPositionState).toBe("original-position");
+
+    state = experienceReducer(rejected, { type: "playback-stopped" });
+    const revision = state.modelGroundingRevision;
+    state = experienceReducer(state, {
+      type: "speaker-position-changed",
+      speakerPositionState: "closer-in-front",
+    });
+
+    const improvedIdentity = currentTransformedResult(state)!.resultIdentity;
+    expect(state.speakerPositionState).toBe("closer-in-front");
+    expect(state.renders.reference.status).toBe("idle");
+    expect(state.renders.simulated.status).toBe("idle");
+    expect(state.playback.status).toBe("stopped");
+    expect(state.modelState.status).toBe("idle");
+    expect(state.modelGroundingRevision).toBe(revision + 1);
+    expect(improvedIdentity).not.toBe(originalIdentity);
+    expect(projectVisibleExperienceState(state)).toMatchObject({
+      speakerPosition: "Speaker position: Closer, in front.",
+      speakerPositionSummary:
+        "Only the important speaker moves to the front at 0.8 m with bounded 2.5 dB focused-speech gain; competing scene content remains unchanged.",
+    });
+
+    state = experienceReducer(state, {
+      type: "render-started",
+      mode: "simulated",
+    });
+    const stale = experienceReducer(state, {
+      type: "playback-started",
+      mode: "simulated",
+      supportMode: "none",
+      interventionState: "tv-on",
+      speakerPositionState: "original-position",
+      sourceIdentity: SOURCE_IDENTITY,
+      resultIdentity: originalIdentity,
+      peakDbFs: -9,
+    });
+    expect(stale.failure?.code).toBe("stale-transition");
+    expect(stale.playback.status).toBe("stopped");
   });
 });
 
@@ -744,6 +938,7 @@ describe("canonical experience state", () => {
       mode: "simulated",
       supportMode: "bilateral",
       interventionState: "tv-on",
+      speakerPositionState: "original-position",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity,
       peakDbFs: -9,
@@ -809,6 +1004,7 @@ describe("canonical experience state", () => {
       mode: "simulated",
       supportMode: "none",
       interventionState: "tv-on",
+      speakerPositionState: "original-position",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity: resultIdentity!,
       peakDbFs: -9,
@@ -904,6 +1100,7 @@ describe("canonical experience state", () => {
       mode: "reference",
       supportMode: null,
       interventionState: "tv-on",
+      speakerPositionState: "original-position",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity,
       peakDbFs: -8,
@@ -978,6 +1175,7 @@ describe("canonical experience state", () => {
       mode: "simulated",
       supportMode: "left-one-sided",
       interventionState: "tv-on",
+      speakerPositionState: "original-position",
       sourceIdentity: SOURCE_IDENTITY,
       resultIdentity,
       peakDbFs: -8,
@@ -1033,6 +1231,10 @@ describe("canonical live and degraded model state", () => {
       },
       supportMode: "none",
       interventionState: "tv-on",
+      speakerPositionState: "original-position",
+      transformation: {
+        focusedSpeechPosition: "original-position",
+      },
     });
 
     state = experienceReducer(state, {
@@ -1157,6 +1359,13 @@ describe("canonical live and degraded model state", () => {
     });
     expect(state.modelState.status).toBe("idle");
     expect(state.modelGroundingRevision).toBe(revision + 2);
+
+    state = experienceReducer(state, {
+      type: "speaker-position-changed",
+      speakerPositionState: "closer-in-front",
+    });
+    expect(state.modelState.status).toBe("idle");
+    expect(state.modelGroundingRevision).toBe(revision + 3);
   });
 
   it("keeps deterministic audio usable while degraded and limits explicit attempts", () => {
@@ -1218,6 +1427,7 @@ describe("canonical live and degraded model state", () => {
       mode: "reference",
       supportMode: null,
       interventionState: state.interventionState,
+      speakerPositionState: state.speakerPositionState,
       sourceIdentity: reference.sourceIdentity,
       resultIdentity: reference.resultIdentity,
       peakDbFs: -8,
@@ -1238,6 +1448,7 @@ describe("fail-closed audio safety policy", () => {
         "reference",
         "none",
         "tv-on",
+        "original-position",
         false,
         SOURCE_IDENTITY,
       ),
@@ -1248,6 +1459,7 @@ describe("fail-closed audio safety policy", () => {
         "reference",
         "none",
         "tv-off",
+        "closer-in-front",
         true,
         "wrong-source",
       ),

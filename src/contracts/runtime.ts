@@ -21,6 +21,10 @@ export const supportModeSchema = z.enum([
 ]);
 
 export const interventionStateSchema = z.enum(["tv-on", "tv-off"]);
+export const speakerPositionStateSchema = z.enum([
+  "original-position",
+  "closer-in-front",
+]);
 
 export const profileSummarySchema = z
   .object({
@@ -58,7 +62,7 @@ export const verifiedTransformationSummarySchema = z
       "bilateral-partial-compensation",
     ]),
     television: z.enum(["included", "removed"]),
-    focusedSpeech: z.literal("unchanged"),
+    focusedSpeechPosition: speakerPositionStateSchema,
     overlappingSpeech: z.literal("unchanged"),
     kitchenRoom: z.literal("unchanged"),
     limitation: z.literal("illustrative-non-clinical"),
@@ -88,6 +92,7 @@ export const modelExplanationRequestSchema = z
     profile: profileSummarySchema,
     supportMode: supportModeSchema,
     interventionState: interventionStateSchema,
+    speakerPositionState: speakerPositionStateSchema,
     transformation: verifiedTransformationSummarySchema,
     scene: fixedSceneFactsSchema,
   })
@@ -108,6 +113,7 @@ export const providerExplanationSchema = z
     profilePattern: profileSummarySchema.shape.pattern,
     supportMode: supportModeSchema,
     interventionState: interventionStateSchema,
+    speakerPositionState: speakerPositionStateSchema,
     sceneFraming: z.string().trim().min(1).max(320),
     audibleChange: z.string().trim().min(1).max(320),
     unchanged: z.string().trim().min(1).max(320),

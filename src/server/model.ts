@@ -49,6 +49,11 @@ const interventionPromptLabels = {
   "tv-off": "TV off",
 } as const;
 
+const speakerPositionPromptLabels = {
+  "original-position": "Original position",
+  "closer-in-front": "Closer, in front",
+} as const;
+
 function degraded(
   request: ModelExplanationRequest,
   reason: DegradedModelExplanation["reason"],
@@ -76,12 +81,15 @@ function providerInputFor(
   const supportLabel = supportPromptLabels[request.supportMode];
   const interventionLabel =
     interventionPromptLabels[request.interventionState];
+  const speakerPositionLabel =
+    speakerPositionPromptLabels[request.speakerPositionState];
 
   const instructions = [
     "Return only the strict structured explanation object.",
     "Frame one original synthetic family-dinner scene for the current run.",
     "Explain only the supplied verified deterministic result.",
-    `The audibleChange field must explicitly use the phrases "${supportLabel}" and "${interventionLabel}".`,
+    `The audibleChange field must explicitly use the phrases "${supportLabel}", "${interventionLabel}", and "${speakerPositionLabel}".`,
+    "The unchanged field may describe only the competing stems, source identity, and timeline; do not claim that the focused speaker position or gain remained unchanged.",
     "Do not diagnose, prescribe, promise benefit, claim clinical accuracy, or infer raw hearing thresholds.",
     "Do not suggest a product, treatment, device, or action.",
     "Keep every field concise, factual, illustrative, and non-clinical.",
@@ -102,6 +110,8 @@ function providerInputFor(
       supportLabel,
       interventionState: request.interventionState,
       interventionLabel,
+      speakerPositionState: request.speakerPositionState,
+      speakerPositionLabel,
       transformation: request.transformation,
       scene: request.scene,
     }),
@@ -140,6 +150,10 @@ function matchesGrounding(
   const expectedSupport = supportPromptLabels[request.supportMode].toLowerCase();
   const expectedIntervention =
     interventionPromptLabels[request.interventionState].toLowerCase();
+  const expectedSpeakerPosition =
+    speakerPositionPromptLabels[
+      request.speakerPositionState
+    ].toLowerCase();
   const audibleChange = output.audibleChange.toLowerCase();
 
   return (
@@ -152,8 +166,10 @@ function matchesGrounding(
     output.profilePattern === request.profile.pattern &&
     output.supportMode === request.supportMode &&
     output.interventionState === request.interventionState &&
+    output.speakerPositionState === request.speakerPositionState &&
     audibleChange.includes(expectedSupport) &&
     audibleChange.includes(expectedIntervention) &&
+    audibleChange.includes(expectedSpeakerPosition) &&
     output.limitation === "Individual perception can differ."
   );
 }
@@ -169,7 +185,9 @@ function requestGroundingIsCoherent(request: ModelExplanationRequest): boolean {
 
   return (
     request.transformation.support === expectedSupport[request.supportMode] &&
-    request.transformation.television === expectedTelevision
+    request.transformation.television === expectedTelevision &&
+    request.transformation.focusedSpeechPosition ===
+      request.speakerPositionState
   );
 }
 

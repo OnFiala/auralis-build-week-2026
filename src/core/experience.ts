@@ -28,6 +28,7 @@ import {
   type ComparisonMode,
   type ComparisonPlan,
   type InterventionState,
+  type SpeakerPositionState,
   type SupportMode,
   type TransformedResultPlan,
 } from "./transformation";
@@ -35,6 +36,7 @@ import {
 export type ExperienceComparisonMode = ComparisonMode;
 export type ExperienceSupportMode = SupportMode;
 export type ExperienceInterventionState = InterventionState;
+export type ExperienceSpeakerPositionState = SpeakerPositionState;
 export type ExperienceProfileEntryOption = ProfileEntryOption;
 
 export type ModelState =
@@ -82,6 +84,7 @@ type PlaybackState =
       mode: null;
       supportMode: null;
       interventionState: null;
+      speakerPositionState: null;
       resultIdentity: null;
     }>
   | Readonly<{
@@ -89,6 +92,7 @@ type PlaybackState =
       mode: ComparisonMode;
       supportMode: SupportMode | null;
       interventionState: InterventionState;
+      speakerPositionState: SpeakerPositionState;
       resultIdentity: string;
     }>
   | Readonly<{
@@ -96,6 +100,7 @@ type PlaybackState =
       mode: null;
       supportMode: null;
       interventionState: null;
+      speakerPositionState: null;
       resultIdentity: null;
     }>;
 
@@ -128,6 +133,7 @@ export type ExperienceState = Readonly<{
   comparisonPlan: ComparisonPlan | null;
   supportMode: SupportMode;
   interventionState: InterventionState;
+  speakerPositionState: SpeakerPositionState;
   source: SourceState;
   renders: Readonly<Record<ComparisonMode, RenderState>>;
   lowVolumeAcknowledged: boolean;
@@ -160,6 +166,10 @@ export type ExperienceAction =
       type: "intervention-state-changed";
       interventionState: InterventionState;
     }>
+  | Readonly<{
+      type: "speaker-position-changed";
+      speakerPositionState: SpeakerPositionState;
+    }>
   | Readonly<{ type: "low-volume-acknowledgement-changed"; acknowledged: boolean }>
   | Readonly<{ type: "source-load-started" }>
   | Readonly<{
@@ -175,6 +185,7 @@ export type ExperienceAction =
       mode: ComparisonMode;
       supportMode: SupportMode | null;
       interventionState: InterventionState;
+      speakerPositionState: SpeakerPositionState;
       sourceIdentity: string;
       resultIdentity: string;
       peakDbFs: number;
@@ -219,6 +230,7 @@ const stoppedPlayback = (): PlaybackState =>
     mode: null,
     supportMode: null,
     interventionState: null,
+    speakerPositionState: null,
     resultIdentity: null,
   });
 
@@ -235,6 +247,7 @@ export function createInitialExperienceState(): ExperienceState {
     comparisonPlan: null,
     supportMode: "none" as const,
     interventionState: "tv-on" as const,
+    speakerPositionState: "original-position" as const,
     source: Object.freeze({ status: "idle" as const }),
     renders: idleRenders(),
     lowVolumeAcknowledged: false,
@@ -274,6 +287,7 @@ function expectedResultIdentity(
         mode,
         state.supportMode,
         state.interventionState,
+        state.speakerPositionState,
       )
     : null;
 }
@@ -300,6 +314,7 @@ export function currentTransformedResult(
         state.comparisonPlan,
         state.supportMode,
         state.interventionState,
+        state.speakerPositionState,
       )
     : null;
 }
@@ -384,6 +399,7 @@ export function createModelExplanationRequest(
     profile: profileSummary(state.confirmedProfile),
     supportMode: state.supportMode,
     interventionState: state.interventionState,
+    speakerPositionState: state.speakerPositionState,
     transformation: {
       support:
         state.supportMode === "none"
@@ -393,7 +409,7 @@ export function createModelExplanationRequest(
             : "bilateral-partial-compensation",
       television:
         state.interventionState === "tv-on" ? "included" : "removed",
-      focusedSpeech: "unchanged",
+      focusedSpeechPosition: state.speakerPositionState,
       overlappingSpeech: "unchanged",
       kitchenRoom: "unchanged",
       limitation: "illustrative-non-clinical",
@@ -422,6 +438,7 @@ function confirmProfile(
     comparisonPlan,
     supportMode: "none" as const,
     interventionState: "tv-on" as const,
+    speakerPositionState: "original-position" as const,
     renders: idleRenders(),
     playback: stoppedPlayback(),
     ...invalidatedModelState(state),
@@ -449,6 +466,7 @@ export function experienceReducer(
         comparisonPlan: null,
         supportMode: "none" as const,
         interventionState: "tv-on" as const,
+        speakerPositionState: "original-position" as const,
         source:
           state.source.status === "loading"
             ? Object.freeze({ status: "idle" as const })
@@ -489,6 +507,7 @@ export function experienceReducer(
         comparisonPlan: null,
         supportMode: "none" as const,
         interventionState: "tv-on" as const,
+        speakerPositionState: "original-position" as const,
         source:
           state.source.status === "loading"
             ? Object.freeze({ status: "idle" as const })
@@ -523,6 +542,7 @@ export function experienceReducer(
             comparisonPlan: null,
             supportMode: "none" as const,
             interventionState: "tv-on" as const,
+            speakerPositionState: "original-position" as const,
             renders: idleRenders(),
             failure: failure("invalid-profile"),
           });
@@ -555,6 +575,7 @@ export function experienceReducer(
             comparisonPlan: null,
             supportMode: "none" as const,
             interventionState: "tv-on" as const,
+            speakerPositionState: "original-position" as const,
             renders: idleRenders(),
             failure: failure("invalid-profile"),
           });
@@ -622,6 +643,37 @@ export function experienceReducer(
       return Object.freeze({
         ...state,
         interventionState: action.interventionState,
+        renders: idleRenders(),
+        playback: stoppedPlayback(),
+        ...invalidatedModelState(state),
+        failure: null,
+      });
+    }
+
+    case "speaker-position-changed": {
+      const rendering =
+        state.renders.reference.status === "rendering" ||
+        state.renders.simulated.status === "rendering";
+
+      if (
+        !state.comparisonPlan ||
+        state.source.status !== "ready" ||
+        state.playback.status === "playing" ||
+        rendering
+      ) {
+        return rejectTransition(state, "invalid-transition");
+      }
+
+      if (state.speakerPositionState === action.speakerPositionState) {
+        return Object.freeze({
+          ...state,
+          failure: null,
+        });
+      }
+
+      return Object.freeze({
+        ...state,
+        speakerPositionState: action.speakerPositionState,
         renders: idleRenders(),
         playback: stoppedPlayback(),
         ...invalidatedModelState(state),
@@ -717,6 +769,7 @@ export function experienceReducer(
         expectedIdentity !== action.resultIdentity ||
         action.supportMode !== expectedSupportMode ||
         action.interventionState !== state.interventionState ||
+        action.speakerPositionState !== state.speakerPositionState ||
         state.renders[action.mode].status !== "rendering"
       ) {
         return rejectTransition(state, "stale-transition");
@@ -738,6 +791,7 @@ export function experienceReducer(
           mode: action.mode,
           supportMode: expectedSupportMode,
           interventionState: state.interventionState,
+          speakerPositionState: state.speakerPositionState,
           resultIdentity: action.resultIdentity,
         }),
         failure: null,
@@ -787,7 +841,8 @@ export function experienceReducer(
         request.groundingRevision !== state.modelGroundingRevision ||
         request.sourceIdentity !== currentResult.sourceIdentity ||
         request.supportMode !== state.supportMode ||
-        request.interventionState !== state.interventionState
+        request.interventionState !== state.interventionState ||
+        request.speakerPositionState !== state.speakerPositionState
       ) {
         return rejectTransition(state, "stale-transition");
       }
@@ -862,6 +917,7 @@ export function experienceReducer(
           mode: null,
           supportMode: null,
           interventionState: null,
+          speakerPositionState: null,
           resultIdentity: null,
         }),
         failure: failure(action.code),
@@ -876,6 +932,8 @@ export type VisibleExperienceState = Readonly<{
   support: string;
   intervention: string;
   interventionSummary: string;
+  speakerPosition: string;
+  speakerPositionSummary: string;
   reference: string;
   simulated: string;
   playback: string;
@@ -901,25 +959,39 @@ const interventionSummaries: Record<InterventionState, string> = {
     "The television contribution has been removed; focused speech, overlapping speech, and room events remain unchanged.",
 };
 
+const speakerPositionLabels: Record<SpeakerPositionState, string> = {
+  "original-position": "Original position",
+  "closer-in-front": "Closer, in front",
+};
+
+const speakerPositionSummaries: Record<SpeakerPositionState, string> = {
+  "original-position":
+    "The important speaker remains at the manifest position: 12° left and 1.2 m away.",
+  "closer-in-front":
+    "Only the important speaker moves to the front at 0.8 m with bounded 2.5 dB focused-speech gain; competing scene content remains unchanged.",
+};
+
 function renderLabel(
   mode: ComparisonMode,
   supportMode: SupportMode,
   interventionState: InterventionState,
+  speakerPositionState: SpeakerPositionState,
   render: RenderState,
 ): string {
   const name =
     mode === "reference" ? "Reference" : supportLabels[supportMode];
   const intervention = interventionLabels[interventionState];
+  const speakerPosition = speakerPositionLabels[speakerPositionState];
 
   switch (render.status) {
     case "idle":
-      return `${name}, ${intervention}: not rendered.`;
+      return `${name}, ${intervention}, ${speakerPosition}: not rendered.`;
     case "rendering":
-      return `${name}, ${intervention}: validating and rendering.`;
+      return `${name}, ${intervention}, ${speakerPosition}: validating and rendering.`;
     case "ready":
-      return `${name}, ${intervention}: validated at ${render.peakDbFs.toFixed(1)} dBFS peak.`;
+      return `${name}, ${intervention}, ${speakerPosition}: validated at ${render.peakDbFs.toFixed(1)} dBFS peak.`;
     case "failed":
-      return `${name}, ${intervention}: rejected.`;
+      return `${name}, ${intervention}, ${speakerPosition}: rejected.`;
   }
 }
 
@@ -955,8 +1027,8 @@ export function projectVisibleExperienceState(
   const playback =
     state.playback.status === "playing"
       ? state.playback.mode === "reference"
-        ? `Playback: reference, ${interventionLabels[state.playback.interventionState]}.`
-        : `Playback: ${supportLabels[state.playback.supportMode ?? "none"]}, ${interventionLabels[state.playback.interventionState]}.`
+        ? `Playback: reference, ${interventionLabels[state.playback.interventionState]}, ${speakerPositionLabels[state.playback.speakerPositionState]}.`
+        : `Playback: ${supportLabels[state.playback.supportMode ?? "none"]}, ${interventionLabels[state.playback.interventionState]}, ${speakerPositionLabels[state.playback.speakerPositionState]}.`
       : state.playback.status === "failed"
         ? "Playback: blocked."
         : "Playback: stopped.";
@@ -980,16 +1052,21 @@ export function projectVisibleExperienceState(
     support: `Support state: ${supportLabels[state.supportMode]}.`,
     intervention: `Environmental intervention: ${interventionLabels[state.interventionState]}.`,
     interventionSummary: interventionSummaries[state.interventionState],
+    speakerPosition: `Speaker position: ${speakerPositionLabels[state.speakerPositionState]}.`,
+    speakerPositionSummary:
+      speakerPositionSummaries[state.speakerPositionState],
     reference: renderLabel(
       "reference",
       state.supportMode,
       state.interventionState,
+      state.speakerPositionState,
       state.renders.reference,
     ),
     simulated: renderLabel(
       "simulated",
       state.supportMode,
       state.interventionState,
+      state.speakerPositionState,
       state.renders.simulated,
     ),
     playback,

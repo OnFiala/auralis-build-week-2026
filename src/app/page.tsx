@@ -19,6 +19,7 @@ import {
   projectVisibleExperienceState,
   type ExperienceComparisonMode,
   type ExperienceInterventionState,
+  type ExperienceSpeakerPositionState,
   type ExperienceSupportMode,
 } from "../core/experience";
 import {
@@ -49,6 +50,14 @@ const supportLabels: Record<ExperienceSupportMode, string> = {
 const interventionLabels: Record<ExperienceInterventionState, string> = {
   "tv-on": "TV on",
   "tv-off": "TV off",
+};
+
+const speakerPositionLabels: Record<
+  ExperienceSpeakerPositionState,
+  string
+> = {
+  "original-position": "Original position",
+  "closer-in-front": "Closer, in front",
 };
 
 function isExpectedHealthResponse(value: unknown): boolean {
@@ -188,6 +197,7 @@ export default function HomePage() {
         mode,
         experience.supportMode,
         experience.interventionState,
+        experience.speakerPositionState,
         plan,
         experience.lowVolumeAcknowledged,
         {
@@ -209,6 +219,7 @@ export default function HomePage() {
         mode,
         supportMode: evidence.supportMode,
         interventionState: evidence.interventionState,
+        speakerPositionState: evidence.speakerPositionState,
         sourceIdentity: evidence.sourceIdentity,
         resultIdentity: evidence.resultIdentity,
         peakDbFs: evidence.peakDbFs,
@@ -576,6 +587,46 @@ export default function HomePage() {
           and does not come from a live model.
         </p>
 
+        <fieldset
+          className="speaker-position-selector"
+          disabled={
+            !experience.confirmedProfile ||
+            experience.source.status !== "ready" ||
+            controlsLocked
+          }
+        >
+          <legend>Illustrative important-speaker position</legend>
+          <div className="speaker-position-options">
+            {(
+              ["original-position", "closer-in-front"] as const
+            ).map((speakerPositionState) => (
+              <label key={speakerPositionState}>
+                <input
+                  type="radio"
+                  name="speaker-position-state"
+                  value={speakerPositionState}
+                  checked={
+                    experience.speakerPositionState === speakerPositionState
+                  }
+                  onChange={() =>
+                    dispatch({
+                      type: "speaker-position-changed",
+                      speakerPositionState,
+                    })
+                  }
+                />
+                <span>{speakerPositionLabels[speakerPositionState]}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <p className="state-line">{visible.speakerPosition}</p>
+        <p>{visible.speakerPositionSummary}</p>
+        <p>
+          This is an illustrative spatial comparison, not a medical
+          recommendation or a guaranteed communication outcome.
+        </p>
+
         {selectedTransformation ? (
           <div className="table-scroll proof-table">
             <table>
@@ -638,7 +689,8 @@ export default function HomePage() {
             }
           >
             Play source reference —{" "}
-            {interventionLabels[experience.interventionState]}
+            {interventionLabels[experience.interventionState]},{" "}
+            {speakerPositionLabels[experience.speakerPositionState]}
           </button>
           <button
             type="button"
@@ -651,7 +703,8 @@ export default function HomePage() {
             }
           >
             Play {supportLabels[experience.supportMode].toLowerCase()} result —{" "}
-            {interventionLabels[experience.interventionState]}
+            {interventionLabels[experience.interventionState]},{" "}
+            {speakerPositionLabels[experience.speakerPositionState]}
           </button>
           <button
             className="stop-button"
@@ -671,6 +724,8 @@ export default function HomePage() {
             <li>{visible.support}</li>
             <li>{visible.intervention}</li>
             <li>{visible.interventionSummary}</li>
+            <li>{visible.speakerPosition}</li>
+            <li>{visible.speakerPositionSummary}</li>
             <li>{visible.reference}</li>
             <li>{visible.simulated}</li>
             <li>{visible.playback}</li>
@@ -691,8 +746,8 @@ export default function HomePage() {
         <h2 id="live-explanation-heading">Explain the current result</h2>
         <p>
           Generate one fresh, bounded explanation for the current illustrative
-          profile, support state and TV intervention. No raw audiogram values are
-          sent to the model.
+          profile, support state, TV intervention and important-speaker
+          position. No raw audiogram values are sent to the model.
         </p>
         <p>
           The explanation is not a diagnosis, prescription or guarantee of
