@@ -6,6 +6,7 @@ import {
   AudioPlaybackCancelledError,
   BrowserAudioEngine,
   FAMILY_DINNER_SOURCE_ID,
+  type SceneTranscriptEntry,
 } from "../browser/audio";
 import { downloadAttributableEvidence } from "../browser/evidence";
 import { requestLiveExplanation } from "../browser/model-client";
@@ -64,6 +65,16 @@ const speakerPositionLabels: Record<
   "closer-in-front": "Closer, in front",
 };
 
+function formatTranscriptTime(startSeconds: number): string {
+  const minutes = Math.floor(startSeconds / 60);
+  const seconds = (startSeconds - minutes * 60)
+    .toFixed(2)
+    .replace(/\.?0+$/, "")
+    .padStart(2, "0");
+
+  return `${minutes}:${seconds}`;
+}
+
 function isExpectedHealthResponse(value: unknown): boolean {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
@@ -80,6 +91,9 @@ function isExpectedHealthResponse(value: unknown): boolean {
 
 export default function HomePage() {
   const [checkState, setCheckState] = useState<CheckState>("idle");
+  const [sceneTranscript, setSceneTranscript] = useState<
+    readonly SceneTranscriptEntry[]
+  >([]);
   const [experience, dispatch] = useReducer(
     experienceReducer,
     createInitialExperienceState(),
@@ -167,9 +181,11 @@ export default function HomePage() {
 
   async function loadSource() {
     dispatch({ type: "source-load-started" });
+    setSceneTranscript([]);
 
     try {
       const evidence = await audioEngine().loadSource();
+      setSceneTranscript(evidence.transcript);
       dispatch({
         type: "source-ready",
         sourceIdentity: evidence.sourceIdentity,
@@ -178,6 +194,7 @@ export default function HomePage() {
         durationSeconds: evidence.durationSeconds,
       });
     } catch {
+      setSceneTranscript([]);
       dispatch({ type: "operation-failed", code: "source-load-failed" });
     }
   }
@@ -286,6 +303,7 @@ export default function HomePage() {
   function startAnotherComparison() {
     audioEngineRef.current?.stop();
     runIdRef.current = null;
+    setSceneTranscript([]);
     dispatch({ type: "comparison-reset" });
   }
 
@@ -534,6 +552,31 @@ export default function HomePage() {
             : "Load validated family scene"}
         </button>
         <p className="state-line">{visible.source}</p>
+        {sceneTranscript.length > 0 ? (
+          <details className="scene-transcript">
+            <summary>Scene transcript</summary>
+            <p>
+              All comparison states use the same underlying scene and timeline.
+              Processing changes the listening comparison, not the spoken
+              wording.
+            </p>
+            <ol>
+              {sceneTranscript.map((entry, index) => (
+                <li key={`${entry.startSeconds}-${entry.speaker}-${index}`}>
+                  <div className="transcript-cue">
+                    <time dateTime={`PT${entry.startSeconds}S`}>
+                      {formatTranscriptTime(entry.startSeconds)}
+                    </time>
+                    <strong className="transcript-speaker">
+                      {entry.speaker}
+                    </strong>
+                  </div>
+                  <p className="transcript-text">{entry.text}</p>
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
       </section>
 
       <section aria-labelledby="comparison-heading">

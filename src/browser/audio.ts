@@ -29,6 +29,9 @@ const APPROVED_FILES = [
   "television.wav",
   "kitchen-room.wav",
 ] as const;
+const MAX_TRANSCRIPT_ENTRIES = 64;
+const MAX_TRANSCRIPT_SPEAKER_LENGTH = 80;
+const MAX_TRANSCRIPT_TEXT_LENGTH = 512;
 
 type ManifestAsset = Readonly<{
   file: (typeof APPROVED_FILES)[number];
@@ -43,6 +46,7 @@ type SceneManifest = Readonly<{
   sourceIdentity: typeof FAMILY_DINNER_SOURCE_ID;
   sceneVersion: string;
   assets: readonly ManifestAsset[];
+  transcript: readonly SceneTranscriptEntry[];
 }>;
 
 type LoadedSource = Readonly<{
@@ -73,6 +77,13 @@ export type SourceReadyEvidence = Readonly<{
   frameCount: number;
   durationSeconds: number;
   assetCount: 4;
+  transcript: readonly SceneTranscriptEntry[];
+}>;
+
+export type SceneTranscriptEntry = Readonly<{
+  startSeconds: number;
+  speaker: string;
+  text: string;
 }>;
 
 export type PlaybackEvidence = Readonly<{
@@ -139,6 +150,37 @@ function parseManifestAsset(value: unknown): ManifestAsset {
   });
 }
 
+function parseTranscriptEntry(
+  value: unknown,
+  durationSeconds: number,
+): SceneTranscriptEntry {
+  if (
+    !isRecord(value) ||
+    typeof value.startSeconds !== "number" ||
+    !Number.isFinite(value.startSeconds) ||
+    value.startSeconds < 0 ||
+    value.startSeconds >= durationSeconds ||
+    typeof value.speaker !== "string" ||
+    value.speaker.length === 0 ||
+    value.speaker.length > MAX_TRANSCRIPT_SPEAKER_LENGTH ||
+    value.speaker.trim() !== value.speaker ||
+    typeof value.text !== "string" ||
+    value.text.length === 0 ||
+    value.text.length > MAX_TRANSCRIPT_TEXT_LENGTH ||
+    value.text.trim() !== value.text
+  ) {
+    throw new AudioSafetyError(
+      "The media manifest contains an invalid transcript entry.",
+    );
+  }
+
+  return Object.freeze({
+    startSeconds: value.startSeconds,
+    speaker: value.speaker,
+    text: value.text,
+  });
+}
+
 function parseManifest(value: unknown): SceneManifest {
   if (
     !isRecord(value) ||
@@ -148,7 +190,10 @@ function parseManifest(value: unknown): SceneManifest {
     value.classification !== "original synthetic generated media" ||
     !isRecord(value.originAndRights) ||
     value.originAndRights.thirdPartySource !== "none" ||
-    !Array.isArray(value.assets)
+    !Array.isArray(value.assets) ||
+    !Array.isArray(value.timeline) ||
+    value.timeline.length === 0 ||
+    value.timeline.length > MAX_TRANSCRIPT_ENTRIES
   ) {
     throw new AudioSafetyError("The media manifest is outside the approved source package.");
   }
@@ -172,11 +217,16 @@ function parseManifest(value: unknown): SceneManifest {
 
     return asset;
   });
+  const durationSeconds = orderedAssets[0].durationSeconds;
+  const transcript = value.timeline.map((entry) =>
+    parseTranscriptEntry(entry, durationSeconds),
+  );
 
   return Object.freeze({
     sourceIdentity: FAMILY_DINNER_SOURCE_ID,
     sceneVersion: value.sceneVersion,
     assets: Object.freeze(orderedAssets),
+    transcript: Object.freeze(transcript),
   });
 }
 
@@ -463,6 +513,7 @@ export class BrowserAudioEngine {
       frameCount: source.commonMetadata.frameCount,
       durationSeconds: source.commonMetadata.durationSeconds,
       assetCount: 4 as const,
+      transcript: source.manifest.transcript,
     });
   }
 

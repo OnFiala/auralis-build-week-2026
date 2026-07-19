@@ -73,6 +73,57 @@ async function acknowledgeAndLoadSource(page: Page): Promise<void> {
   ).toBeVisible({ timeout: 60_000 });
 }
 
+async function assertAccessibleSceneTranscript(page: Page): Promise<number> {
+  const manifestResponse = await page.request.get(
+    "/media/family-dinner/manifest.json",
+  );
+  expect(manifestResponse.status()).toBe(200);
+
+  const manifest = (await manifestResponse.json()) as {
+    timeline?: unknown;
+  };
+  expect(Array.isArray(manifest.timeline)).toBe(true);
+
+  const timeline = manifest.timeline as {
+    startSeconds: number;
+    speaker: string;
+    text: string;
+  }[];
+  const transcript = page.locator("details.scene-transcript");
+  const summary = transcript.getByText("Scene transcript", { exact: true });
+
+  await summary.focus();
+  await expect(summary).toBeFocused();
+  await summary.press("Enter");
+  await expect(transcript).toHaveAttribute("open", "");
+
+  const entries = transcript.getByRole("listitem");
+  await expect(entries).toHaveCount(timeline.length);
+
+  for (const [index, expected] of timeline.entries()) {
+    const entry = entries.nth(index);
+    const time = entry.locator("time");
+
+    await expect(time).toHaveAttribute("datetime", `PT${expected.startSeconds}S`);
+    const [minutes, seconds] = ((await time.textContent()) ?? "").split(":");
+    expect(Number(minutes) * 60 + Number(seconds)).toBe(expected.startSeconds);
+    await expect(entry.locator(".transcript-speaker")).toHaveText(
+      expected.speaker,
+    );
+    await expect(entry.locator(".transcript-text")).toHaveText(expected.text);
+  }
+
+  const renderedTranscript = (await transcript.textContent()) ?? "";
+  expect(renderedTranscript).not.toMatch(
+    /leftThresholdsDbHl|rightThresholdsDbHl|frequencyGridHz|manualDraft/,
+  );
+  expect(renderedTranscript).not.toMatch(
+    /OPENAI_API_KEY|sk-[A-Za-z0-9]|sourceIdentity|sha256|\/Users\/|_vercel_share/,
+  );
+
+  return timeline.length;
+}
+
 async function playAndStop(
   page: Page,
   buttonName: RegExp,
@@ -199,6 +250,7 @@ test("manual profile completes one attributable live journey", async ({
   await openExperience(page);
   await loadManualProfile(page);
   await acknowledgeAndLoadSource(page);
+  const transcriptEntryCount = await assertAccessibleSceneTranscript(page);
   await playAndStop(
     page,
     /^Play source reference/,
@@ -213,6 +265,9 @@ test("manual profile completes one attributable live journey", async ({
   await page.getByRole("radio", { name: "Bilateral support" }).check();
   await page.getByRole("radio", { name: "TV off" }).check();
   await page.getByRole("radio", { name: "Closer, in front" }).check();
+  await expect(
+    page.locator("details.scene-transcript").getByRole("listitem"),
+  ).toHaveCount(transcriptEntryCount);
   await playAndStop(
     page,
     /^Play bilateral support result/,

@@ -215,6 +215,52 @@ button:disabled {
   font-weight: 650;
 }
 
+.scene-transcript {
+  max-width: 52rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #c7d9d4;
+  border-radius: 0.75rem;
+  background: #f7fbfa;
+}
+
+.scene-transcript summary {
+  color: #1c5b50;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.scene-transcript summary:focus-visible {
+  outline: 3px solid #f3a712;
+  outline-offset: 3px;
+}
+
+.scene-transcript ol {
+  margin-bottom: 0;
+  padding-left: 1.5rem;
+}
+
+.scene-transcript li + li {
+  margin-top: 1rem;
+}
+
+.transcript-cue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.transcript-cue time {
+  min-width: 3.5rem;
+  color: #4b625d;
+  font-variant-numeric: tabular-nums;
+}
+
+.transcript-text {
+  margin: 0.25rem 0 0;
+}
+
 .error-message {
   padding: 0.75rem 1rem;
   border-left: 4px solid #a12828;
