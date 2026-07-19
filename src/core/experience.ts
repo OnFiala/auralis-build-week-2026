@@ -1,5 +1,6 @@
 import {
   MAX_MODEL_ATTEMPTS_PER_SESSION,
+  MODEL_ID,
   MODEL_OPERATION,
   modelExplanationRequestSchema,
   type ModelExplanationRequest,
@@ -1022,6 +1023,36 @@ export type TerminalCompletionProjection = Readonly<{
   nextAction: string;
 }>;
 
+export const ATTRIBUTABLE_EVIDENCE_SCHEMA_VERSION =
+  "auralis-evidence-v1" as const;
+
+export type AttributableEvidenceProjection = Readonly<{
+  schemaVersion: typeof ATTRIBUTABLE_EVIDENCE_SCHEMA_VERSION;
+  sourceIdentity: string;
+  resultIdentity: string;
+  profile: Readonly<{
+    label: string;
+    origin: "manual" | "predefined";
+    predefinedProfileId: PredefinedProfileId | null;
+  }>;
+  supportMode: SupportMode;
+  televisionState: InterventionState;
+  speakerPositionState: SpeakerPositionState;
+  completionStatus: "complete-live" | "complete-degraded";
+  explanation: Readonly<
+    | {
+        status: "live";
+        model: typeof MODEL_ID;
+      }
+    | {
+        status: "degraded";
+        model: null;
+      }
+  >;
+  limitation: string;
+  generatedAt: string;
+}>;
+
 const supportLabels: Record<SupportMode, string> = {
   none: "No support",
   "left-one-sided": "Left-ear support",
@@ -1113,6 +1144,55 @@ export function projectTerminalCompletion(
       "This experience is illustrative; it is not a diagnosis, prescription, hearing-aid fitting, or prediction of individual perception.",
     nextAction:
       "Use this comparison to discuss communication conditions with the people around you.",
+  });
+}
+
+export function projectAttributableEvidence(
+  state: ExperienceState,
+  generatedAt: string,
+): AttributableEvidenceProjection | null {
+  const terminal = projectTerminalCompletion(state);
+  const result = currentTransformedResult(state);
+  const profile = state.confirmedProfile;
+  const generatedTime = Date.parse(generatedAt);
+
+  if (
+    !terminal ||
+    !result ||
+    !profile ||
+    !Number.isFinite(generatedTime) ||
+    new Date(generatedTime).toISOString() !== generatedAt ||
+    (state.modelState.status !== "live" &&
+      state.modelState.status !== "degraded")
+  ) {
+    return null;
+  }
+
+  return Object.freeze({
+    schemaVersion: ATTRIBUTABLE_EVIDENCE_SCHEMA_VERSION,
+    sourceIdentity: result.sourceIdentity,
+    resultIdentity: terminal.resultIdentity,
+    profile: Object.freeze({
+      label: terminal.profile,
+      origin: profile.sourceType,
+      predefinedProfileId: profile.predefinedProfileId,
+    }),
+    supportMode: state.supportMode,
+    televisionState: state.interventionState,
+    speakerPositionState: state.speakerPositionState,
+    completionStatus: terminal.status,
+    explanation:
+      state.modelState.status === "live"
+        ? Object.freeze({
+            status: "live" as const,
+            model: MODEL_ID,
+          })
+        : Object.freeze({
+            status: "degraded" as const,
+            model: null,
+          }),
+    limitation: terminal.limitation,
+    generatedAt,
   });
 }
 

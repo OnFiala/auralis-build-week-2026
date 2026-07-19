@@ -15,7 +15,8 @@
     "test:core": "vitest run src/core/core.test.ts",
     "test:model": "vitest run src/server/model.test.ts",
     "test:smoke": "playwright test tests/smoke.spec.ts",
-    "check": "npm run typecheck && npm run check:deps && npm run test:core && npm run test:model && npm run build && npm run test:smoke"
+    "test:journey": "playwright test tests/journey.spec.ts",
+    "check": "npm run typecheck && npm run check:deps && npm run test:core && npm run test:model && npm run build && npm run test:smoke && npm run test:journey"
   },
   "dependencies": {
     "next": "16.2.10",

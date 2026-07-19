@@ -7,6 +7,7 @@ import {
   BrowserAudioEngine,
   FAMILY_DINNER_SOURCE_ID,
 } from "../browser/audio";
+import { downloadAttributableEvidence } from "../browser/evidence";
 import { requestLiveExplanation } from "../browser/model-client";
 import { MAX_MODEL_ATTEMPTS_PER_SESSION } from "../contracts/runtime";
 import {
@@ -17,6 +18,7 @@ import {
   createModelExplanationRequest,
   currentTransformedResult,
   experienceReducer,
+  projectAttributableEvidence,
   projectTerminalCompletion,
   projectVisibleExperienceState,
   type ExperienceComparisonMode,
@@ -285,6 +287,17 @@ export default function HomePage() {
     audioEngineRef.current?.stop();
     runIdRef.current = null;
     dispatch({ type: "comparison-reset" });
+  }
+
+  function downloadCurrentEvidence() {
+    const evidence = projectAttributableEvidence(
+      experience,
+      new Date().toISOString(),
+    );
+
+    if (evidence) {
+      downloadAttributableEvidence(evidence);
+    }
   }
 
   return (
@@ -876,9 +889,18 @@ export default function HomePage() {
             <p>
               <strong>Next action:</strong> {terminalCompletion.nextAction}
             </p>
-            <button type="button" onClick={startAnotherComparison}>
-              Start another comparison
-            </button>
+            <p>
+              The downloadable JSON is a sanitized, attributable proof of this
+              illustrative run. It is not a clinical report.
+            </p>
+            <div className="button-row">
+              <button type="button" onClick={downloadCurrentEvidence}>
+                Download evidence
+              </button>
+              <button type="button" onClick={startAnotherComparison}>
+                Start another comparison
+              </button>
+            </div>
           </div>
         ) : (
           <p className="state-line">

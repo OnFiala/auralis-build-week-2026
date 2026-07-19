@@ -7,6 +7,7 @@ import {
   createModelExplanationRequest,
   currentTransformedResult,
   experienceReducer,
+  projectAttributableEvidence,
   projectTerminalCompletion,
   projectVisibleExperienceState,
   type ExperienceState,
@@ -1721,6 +1722,96 @@ describe("canonical terminal completion", () => {
     });
     expect(nextComparison.failure).toBeNull();
     expect(nextComparison.manualDraft.right["2000"]).toBe("30");
+  });
+});
+
+describe("sanitized attributable evidence projection", () => {
+  const generatedAt = "2026-07-19T20:00:00.000Z";
+
+  it("is unavailable before valid completion and after stale upstream state", () => {
+    const ready = resolvedModelState("live");
+    const completed = experienceReducer(ready, {
+      type: "experience-completed",
+    });
+    const stale = experienceReducer(completed, {
+      type: "support-mode-changed",
+      supportMode: "bilateral",
+    });
+
+    expect(projectAttributableEvidence(ready, generatedAt)).toBeNull();
+    expect(projectAttributableEvidence(stale, generatedAt)).toBeNull();
+    expect(
+      projectAttributableEvidence(completed, "not-an-iso-timestamp"),
+    ).toBeNull();
+  });
+
+  it("allows matching live and degraded evidence with only canonical allowlisted fields", () => {
+    for (const outcome of ["live", "degraded"] as const) {
+      const completed = experienceReducer(resolvedModelState(outcome), {
+        type: "experience-completed",
+      });
+      const evidence = projectAttributableEvidence(completed, generatedAt)!;
+      const serialized = JSON.stringify(evidence);
+
+      expect(Object.keys(evidence).sort()).toEqual([
+        "completionStatus",
+        "explanation",
+        "generatedAt",
+        "limitation",
+        "profile",
+        "resultIdentity",
+        "schemaVersion",
+        "sourceIdentity",
+        "speakerPositionState",
+        "supportMode",
+        "televisionState",
+      ]);
+      expect(Object.keys(evidence.profile).sort()).toEqual([
+        "label",
+        "origin",
+        "predefinedProfileId",
+      ]);
+      expect(evidence).toMatchObject({
+        schemaVersion: "auralis-evidence-v1",
+        sourceIdentity: SOURCE_IDENTITY,
+        profile: {
+          label: "Manual audiogram",
+          origin: "manual",
+          predefinedProfileId: null,
+        },
+        supportMode: "none",
+        televisionState: "tv-on",
+        speakerPositionState: "original-position",
+        completionStatus:
+          outcome === "live" ? "complete-live" : "complete-degraded",
+        explanation:
+          outcome === "live"
+            ? { status: "live", model: MODEL_ID }
+            : { status: "degraded", model: null },
+        generatedAt,
+      });
+      expect(evidence.resultIdentity).toMatch(
+        /^auralis-result-v1-[a-f0-9]{16}$/,
+      );
+      expect(serialized).not.toMatch(
+        /leftThresholdsDbHl|rightThresholdsDbHl|frequencyGridHz|manualDraft/,
+      );
+      expect(Object.values(evidence).some(Array.isArray)).toBe(false);
+    }
+  });
+
+  it("invalidates evidence on reset", () => {
+    const completed = experienceReducer(resolvedModelState("degraded"), {
+      type: "experience-completed",
+    });
+    const reset = experienceReducer(completed, {
+      type: "comparison-reset",
+    });
+
+    expect(projectAttributableEvidence(completed, generatedAt)).not.toBeNull();
+    expect(projectAttributableEvidence(reset, generatedAt)).toBeNull();
+    expect(reset.playback.status).toBe("stopped");
+    expect(reset.modelState.status).toBe("idle");
   });
 });
 
