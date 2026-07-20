@@ -2,7 +2,7 @@
   "name": "auralis-build-week-2026",
   "version": "0.0.0",
   "private": true,
-  "description": "Auralis executable walking skeleton for OpenAI Build Week 2026.",
+  "description": "An illustrative, non-clinical deterministic Auralis hearing experience for OpenAI Build Week 2026.",
   "engines": {
     "node": "22.x"
   },

@@ -22,7 +22,12 @@ test("public walking skeleton reaches its trusted health boundary", async ({ pag
   expect(navigation?.headers()["www-authenticate"]).toBeUndefined();
   await expect(page.getByRole("heading", { name: "Auralis", level: 1 })).toBeVisible();
   await expect(page.getByText("This is the executable system shell.")).toBeVisible();
-  await expect(page.getByText("The hearing experience is not implemented yet.")).toBeVisible();
+  await expect(
+    page.getByText(
+      "The deterministic Phase 10 hearing experience is implemented as an illustrative, non-clinical Build Week vertical slice—not a complete clinical product.",
+      { exact: true },
+    ),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Check system status" }).click();
   await expect(

@@ -329,7 +329,9 @@ export default function HomePage() {
           10 deterministic audio proof.
         </p>
         <p>
-          The hearing experience is not implemented yet.
+          The deterministic Phase 10 hearing experience is implemented as an
+          illustrative, non-clinical Build Week vertical slice—not a complete
+          clinical product.
         </p>
         <p>
           This local build contains only the first bounded deterministic proof,
