@@ -242,6 +242,38 @@ async function playAndStop(
   ).toBeVisible();
 }
 
+async function playListeningAndStop(
+  page: Page,
+  buttonName: string,
+  cardSelector: string,
+  preparingState: string,
+  playingState: string,
+): Promise<void> {
+  const status = page.locator(".listening-transport-status");
+  const card = page.locator(cardSelector);
+
+  await page.getByRole("button", { name: buttonName }).click();
+  expect([preparingState, playingState]).toContain(await status.textContent());
+  const cardIdentityClass = cardSelector.slice(1);
+  expect([
+    `ab-playback-card ${cardIdentityClass} ab-playback-card-preparing`,
+    `ab-playback-card ${cardIdentityClass} ab-playback-card-playing`,
+  ]).toContain(await card.getAttribute("class"));
+  await expect(status).toHaveText(playingState, { timeout: 60_000 });
+  await expect(card).toHaveClass(/ab-playback-card-playing/);
+  await expect(card.getByText("Now playing", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue to Interventions" }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Stop immediately" }).click();
+  await expect(status).toHaveText(
+    "Playback stopped · A and B controls are ready.",
+  );
+  await expect(
+    page.getByRole("button", { name: "Stop immediately" }),
+  ).toBeDisabled();
+}
+
 function assertSanitizedEvidence(
   raw: string,
   evidence: Record<string, unknown>,
@@ -385,12 +417,55 @@ test("manual profile completes one attributable live journey", async ({
     "Listening",
     "Compare the same family moment",
   );
-  await page.getByRole("button", { name: /^Play source reference/ }).click();
+  const listeningScreen = page.locator(".listening-screen");
+  const referenceCard = listeningScreen.locator(".ab-playback-card-a");
+  const resultCard = listeningScreen.locator(".ab-playback-card-b");
+  const primaryControls = listeningScreen.locator(
+    ".ab-play-button, .listening-support-selector",
+  );
+  const continueToInterventions = page.getByRole("button", {
+    name: "Continue to Interventions",
+  });
+
+  await expect(referenceCard.getByText("Source reference")).toBeVisible();
+  await expect(referenceCard).not.toContainText(
+    /No support|Left-ear support|Bilateral support/,
+  );
+  await expect(resultCard.getByText("Illustrative result")).toBeVisible();
   await expect(
-    page.getByText("Playback: reference, TV on, Original position.", {
-      exact: true,
-    }),
-  ).toBeVisible({ timeout: 60_000 });
+    resultCard.getByText("Support applies only to B.", { exact: true }),
+  ).toBeVisible();
+  await expect(primaryControls).toHaveCount(3);
+  await expect(primaryControls.nth(0)).toHaveAccessibleName(
+    "Play A — Source reference",
+  );
+  await expect(primaryControls.nth(1)).toHaveAccessibleName(
+    "Play B — No support illustrative result",
+  );
+  await expect(primaryControls.nth(2)).toHaveAccessibleName(
+    "Illustrative support for B",
+  );
+  await expect(listeningScreen.getByRole("radio")).toHaveCount(3);
+  await expect(
+    listeningScreen.locator(".listening-transport-status"),
+  ).toHaveText("Playback stopped · A and B controls are ready.");
+  await expect(continueToInterventions).toBeDisabled();
+
+  await page
+    .getByRole("button", { name: "Play A — Source reference" })
+    .click();
+  await expect(
+    listeningScreen.locator(".listening-transport-status"),
+  ).toHaveText(
+    "Preparing A · Source reference · TV on · Original position",
+  );
+  await expect(referenceCard).toHaveClass(/ab-playback-card-preparing/);
+  await expect(
+    listeningScreen.locator(".listening-transport-status"),
+  ).toHaveText("Playing A · Source reference · TV on · Original position", {
+    timeout: 60_000,
+  });
+  await expect(referenceCard).toHaveClass(/ab-playback-card-playing/);
   await expect(
     page.getByRole("button", { name: "Stop immediately" }),
   ).toBeEnabled();
@@ -404,29 +479,41 @@ test("manual profile completes one attributable live journey", async ({
     "Compare the same family moment",
   );
   await expect(
-    page.getByText("Playback: stopped.", { exact: true }),
-  ).toBeVisible();
+    page.locator(".listening-transport-status"),
+  ).toHaveText("Playback stopped · A and B controls are ready.");
   await expect(
     page.getByRole("button", { name: "Stop immediately" }),
   ).toBeDisabled();
+  await expect(continueToInterventions).toBeDisabled();
 
-  await playAndStop(
+  await playListeningAndStop(
     page,
-    /^Play source reference/,
-    "Playback: reference, TV on, Original position.",
+    "Play A — Source reference",
+    ".ab-playback-card-a",
+    "Preparing A · Source reference · TV on · Original position",
+    "Playing A · Source reference · TV on · Original position",
   );
-  await playAndStop(
+  await expect(continueToInterventions).toBeDisabled();
+
+  await playListeningAndStop(
     page,
-    /^Play no support result/,
-    "Playback: No support, TV on, Original position.",
+    "Play B — No support illustrative result",
+    ".ab-playback-card-b",
+    "Preparing B · No support · TV on · Original position",
+    "Playing B · No support · TV on · Original position",
   );
+  await expect(continueToInterventions).toBeEnabled();
 
   await page.getByRole("radio", { name: "Bilateral support" }).check();
-  await playAndStop(
+  await expect(continueToInterventions).toBeDisabled();
+  await playListeningAndStop(
     page,
-    /^Play bilateral support result/,
-    "Playback: Bilateral support, TV on, Original position.",
+    "Play B — Bilateral support illustrative result",
+    ".ab-playback-card-b",
+    "Preparing B · Bilateral support · TV on · Original position",
+    "Playing B · Bilateral support · TV on · Original position",
   );
+  await expect(continueToInterventions).toBeEnabled();
   await continueToScreen(
     page,
     "Interventions",
@@ -607,15 +694,19 @@ test("predefined profile completes one honest degraded journey", async ({
     "Listening",
     "Compare the same family moment",
   );
-  await playAndStop(
+  await playListeningAndStop(
     page,
-    /^Play source reference/,
-    "Playback: reference, TV on, Original position.",
+    "Play A — Source reference",
+    ".ab-playback-card-a",
+    "Preparing A · Source reference · TV on · Original position",
+    "Playing A · Source reference · TV on · Original position",
   );
-  await playAndStop(
+  await playListeningAndStop(
     page,
-    /^Play no support result/,
-    "Playback: No support, TV on, Original position.",
+    "Play B — No support illustrative result",
+    ".ab-playback-card-b",
+    "Preparing B · No support · TV on · Original position",
+    "Playing B · No support · TV on · Original position",
   );
   await continueToScreen(
     page,

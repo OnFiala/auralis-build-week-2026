@@ -97,6 +97,12 @@ const supportLabels: Record<ExperienceSupportMode, string> = {
   bilateral: "Bilateral support",
 };
 
+const supportEarSummaries: Record<ExperienceSupportMode, string> = {
+  none: "Right: none · Left: none",
+  "left-one-sided": "Right: none · Left: illustrative",
+  bilateral: "Right: illustrative · Left: illustrative",
+};
+
 const interventionLabels: Record<ExperienceInterventionState, string> = {
   "tv-on": "TV on",
   "tv-off": "TV off",
@@ -441,9 +447,13 @@ export default function HomePage() {
   const terminalCompletion = projectTerminalCompletion(experience);
   const completionEligible = canCompleteExperience(experience);
   const selectedTransformation = currentTransformedResult(experience);
-  const isRendering =
-    experience.renders.reference.status === "rendering" ||
-    experience.renders.simulated.status === "rendering";
+  const renderingMode: ExperienceComparisonMode | null =
+    experience.renders.reference.status === "rendering"
+      ? "reference"
+      : experience.renders.simulated.status === "rendering"
+        ? "simulated"
+        : null;
+  const isRendering = renderingMode !== null;
   const isPlaying = experience.playback.status === "playing";
   const transportStatus = isRendering
     ? "Preparing audio for playback…"
@@ -470,8 +480,31 @@ export default function HomePage() {
     experience.confirmedProfile !== null &&
     experience.source.status === "ready" &&
     experience.lowVolumeAcknowledged;
-  const listeningComparisonReady = referenceReady && simulatedReady;
+  const listeningComparisonReady =
+    referenceReady &&
+    simulatedReady &&
+    !isRendering &&
+    experience.playback.status === "stopped";
   const explanationReady = simulatedReady;
+  const listeningTransportStatus =
+    renderingMode === "reference"
+      ? `Preparing A · Source reference · ${interventionLabels[experience.interventionState]} · ${speakerPositionLabels[experience.speakerPositionState]}`
+      : renderingMode === "simulated"
+        ? `Preparing B · ${supportLabels[experience.supportMode]} · ${interventionLabels[experience.interventionState]} · ${speakerPositionLabels[experience.speakerPositionState]}`
+        : experience.playback.status === "playing"
+          ? experience.playback.mode === "reference"
+            ? `Playing A · Source reference · ${interventionLabels[experience.playback.interventionState]} · ${speakerPositionLabels[experience.playback.speakerPositionState]}`
+            : `Playing B · ${supportLabels[experience.playback.supportMode ?? "none"]} · ${interventionLabels[experience.playback.interventionState]} · ${speakerPositionLabels[experience.playback.speakerPositionState]}`
+          : experience.playback.status === "failed"
+            ? "Playback blocked · The audio request failed closed."
+            : "Playback stopped · A and B controls are ready.";
+  const listeningTransportKind = renderingMode
+    ? "preparing"
+    : experience.playback.status === "playing"
+      ? "playing"
+      : experience.playback.status === "failed"
+        ? "failed"
+        : "stopped";
 
   useEffect(
     () => () => {
@@ -1183,14 +1216,158 @@ export default function HomePage() {
     );
   }
 
+  function listeningPlaybackCards() {
+    const cardState = (
+      mode: ExperienceComparisonMode,
+      ready: boolean,
+    ): "preparing" | "playing" | "ready" | "idle" => {
+      if (renderingMode === mode) {
+        return "preparing";
+      }
+
+      if (
+        experience.playback.status === "playing" &&
+        experience.playback.mode === mode
+      ) {
+        return "playing";
+      }
+
+      return ready ? "ready" : "idle";
+    };
+    const referenceCardState = cardState("reference", referenceReady);
+    const simulatedCardState = cardState("simulated", simulatedReady);
+    const cardStateLabel = (
+      state: ReturnType<typeof cardState>,
+    ): string => {
+      switch (state) {
+        case "preparing":
+          return "Preparing";
+        case "playing":
+          return "Now playing";
+        case "ready":
+          return "Ready";
+        case "idle":
+          return "Ready to prepare";
+      }
+    };
+
+    return (
+      <div
+        className="ab-playback-grid"
+        role="group"
+        aria-label="A and B playback choices"
+      >
+        <article
+          className={`ab-playback-card ab-playback-card-a ab-playback-card-${referenceCardState}`}
+        >
+          <div className="ab-card-heading">
+            <span className="ab-card-letter" aria-hidden="true">
+              A
+            </span>
+            <div>
+              <p className="ab-card-kicker">Validated source</p>
+              <h3>Source reference</h3>
+            </div>
+          </div>
+          <p className="ab-card-description">
+            Hear the family scene before the illustrative profile result.
+          </p>
+          <dl className="ab-condition-list">
+            <div>
+              <dt>Television</dt>
+              <dd>{interventionLabels[experience.interventionState]}</dd>
+            </div>
+            <div>
+              <dt>Speaker</dt>
+              <dd>
+                {speakerPositionLabels[experience.speakerPositionState]}
+              </dd>
+            </div>
+          </dl>
+          <p className="ab-card-state">
+            <span aria-hidden="true" />
+            {cardStateLabel(referenceCardState)}
+          </p>
+          <p className="ab-support-note">
+            A remains independent of the B support choice.
+          </p>
+          <button
+            className="ab-play-button"
+            type="button"
+            aria-label="Play A — Source reference"
+            onClick={() => void play("reference")}
+            disabled={
+              !experience.comparisonPlan ||
+              experience.source.status !== "ready" ||
+              !experience.lowVolumeAcknowledged ||
+              controlsLocked
+            }
+          >
+            Play A
+          </button>
+        </article>
+
+        <article
+          className={`ab-playback-card ab-playback-card-b ab-playback-card-${simulatedCardState}`}
+        >
+          <div className="ab-card-heading">
+            <span className="ab-card-letter" aria-hidden="true">
+              B
+            </span>
+            <div>
+              <p className="ab-card-kicker">Profile-shaped comparison</p>
+              <h3>Illustrative result</h3>
+            </div>
+          </div>
+          <p className="ab-card-description">
+            Hear the same source with the current illustrative support and
+            environmental conditions.
+          </p>
+          <dl className="ab-condition-list">
+            <div>
+              <dt>Support</dt>
+              <dd>{supportLabels[experience.supportMode]}</dd>
+            </div>
+            <div>
+              <dt>Environment</dt>
+              <dd>
+                {interventionLabels[experience.interventionState]} ·{" "}
+                {speakerPositionLabels[experience.speakerPositionState]}
+              </dd>
+            </div>
+          </dl>
+          <p className="ab-card-state">
+            <span aria-hidden="true" />
+            {cardStateLabel(simulatedCardState)}
+          </p>
+          <p className="ab-support-note">Support applies only to B.</p>
+          <button
+            className="ab-play-button"
+            type="button"
+            aria-label={`Play B — ${supportLabels[experience.supportMode]} illustrative result`}
+            onClick={() => void play("simulated")}
+            disabled={
+              !experience.comparisonPlan ||
+              experience.source.status !== "ready" ||
+              !experience.lowVolumeAcknowledged ||
+              controlsLocked
+            }
+          >
+            Play B
+          </button>
+        </article>
+      </div>
+    );
+  }
+
   function renderListeningScreen() {
     return (
       <section
         key="listening"
-        className="experience-screen"
+        className="experience-screen listening-screen"
         aria-labelledby="comparison-heading"
       >
-        <p className="step-label">A / B listening comparison</p>
+        <p className="step-label">A / B LISTENING COMPARISON</p>
         <h2
           id="comparison-heading"
           ref={screenHeadingRef}
@@ -1201,16 +1378,35 @@ export default function HomePage() {
         </h2>
         <p className="same-source-line">Same family scene · same timeline</p>
         <p className="screen-introduction">
-          A is the source reference. B is the illustrative profile result; the
-          support choice applies only to B.
+          A is the validated source reference. B is the illustrative profile
+          result. Support changes only B.
         </p>
 
+        <figure className="listening-scene-strip">
+          <div className="listening-scene-strip-frame">
+            <Image
+              src="/media/auralis-family-scene.png"
+              alt="A family talking in a connected living room and kitchen."
+              fill
+              sizes="(max-width: 700px) calc(100vw - 3rem), 1180px"
+              className="listening-scene-strip-image"
+            />
+          </div>
+          <figcaption>
+            <strong>Same validated family scene · same timeline</strong>
+            <span>Illustrative visual context—not synchronized playback.</span>
+          </figcaption>
+        </figure>
+
+        {listeningPlaybackCards()}
+
         <fieldset
-          className="support-selector"
+          className="support-selector listening-support-selector"
           disabled={!experience.comparisonPlan || controlsLocked}
+          aria-describedby="listening-support-limitation"
         >
           <legend>Illustrative support for B</legend>
-          <div className="support-options">
+          <div className="support-options listening-support-options">
             {(
               [
                 ["none", "No support"],
@@ -1224,70 +1420,86 @@ export default function HomePage() {
                   name="support-mode"
                   value={supportMode}
                   checked={experience.supportMode === supportMode}
+                  aria-label={label}
                   onChange={() =>
                     dispatch({ type: "support-mode-changed", supportMode })
                   }
                 />
-                <span>{label}</span>
+                <span className="support-option-copy">
+                  <strong>{label}</strong>
+                  <small>{supportEarSummaries[supportMode]}</small>
+                </span>
               </label>
             ))}
           </div>
         </fieldset>
-        <p className="state-line">{visible.support}</p>
-        <p className="acknowledgement-confirmed">
-          Low-volume acknowledgement confirmed for this comparison.
+        <p
+          id="listening-support-limitation"
+          className="listening-support-limitation"
+        >
+          Illustrative support comparison—not a fitting, prescription, or
+          prediction of benefit.
         </p>
 
-        {playbackButtons()}
-
-        <p className="playback-state" role="status" aria-live="polite">
-          {transportStatus}
+        <p
+          className={`listening-transport-status listening-transport-status-${listeningTransportKind}`}
+          role="status"
+          aria-live="polite"
+        >
+          {listeningTransportStatus}
         </p>
-        {sceneTranscriptDetail()}
+        <p className="listening-volume-confirmation">
+          <span aria-hidden="true" />
+          Low volume acknowledged
+        </p>
 
-        <details className="technical-detail">
-          <summary>Technical comparison details</summary>
-          <ul>
-            <li>{visible.profile}</li>
-            <li>{visible.source}</li>
-            <li>{visible.reference}</li>
-            <li>{visible.simulated}</li>
-          </ul>
-          {selectedTransformation ? (
-            <div className="table-scroll proof-table">
-              <table>
-                <caption>
-                  {supportLabels[experience.supportMode]} profile-derived plan
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Frequency</th>
-                    <th scope="col">Right</th>
-                    <th scope="col">Left</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedTransformation.leftFilters.map(
-                    (leftFilter, index) => {
-                      const rightFilter =
-                        selectedTransformation.rightFilters[index];
+        <div className="listening-details">
+          {sceneTranscriptDetail()}
 
-                      return (
-                        <tr key={leftFilter.frequencyHz}>
-                          <th scope="row">{leftFilter.frequencyHz} Hz</th>
-                          <td>{rightFilter.gainDb.toFixed(1)} dB</td>
-                          <td>{leftFilter.gainDb.toFixed(1)} dB</td>
-                        </tr>
-                      );
-                    },
-                  )}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-        </details>
+          <details className="technical-detail">
+            <summary>Technical comparison details</summary>
+            <ul>
+              <li>{visible.profile}</li>
+              <li>{visible.source}</li>
+              <li>{visible.reference}</li>
+              <li>{visible.simulated}</li>
+            </ul>
+            {selectedTransformation ? (
+              <div className="table-scroll proof-table">
+                <table>
+                  <caption>
+                    {supportLabels[experience.supportMode]} profile-derived plan
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Frequency</th>
+                      <th scope="col">Right</th>
+                      <th scope="col">Left</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedTransformation.leftFilters.map(
+                      (leftFilter, index) => {
+                        const rightFilter =
+                          selectedTransformation.rightFilters[index];
 
-        <p className="limitation">
+                        return (
+                          <tr key={leftFilter.frequencyHz}>
+                            <th scope="row">{leftFilter.frequencyHz} Hz</th>
+                            <td>{rightFilter.gainDb.toFixed(1)} dB</td>
+                            <td>{leftFilter.gainDb.toFixed(1)} dB</td>
+                          </tr>
+                        );
+                      },
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </details>
+        </div>
+
+        <p className="limitation listening-limitation">
           This spectral transformation and every support state are illustrative
           and non-clinical. They are not a hearing-aid fitting, prescription, or
           prediction of individual benefit.

@@ -1101,6 +1101,327 @@ button:disabled {
   font-weight: 800;
 }
 
+.listening-screen .screen-introduction {
+  max-width: 58rem;
+}
+
+.listening-scene-strip {
+  position: relative;
+  margin: 1.25rem 0 0;
+}
+
+.listening-scene-strip-frame {
+  position: relative;
+  aspect-ratio: 5 / 1;
+  min-height: 7rem;
+  overflow: hidden;
+  border: 1px solid #b8cbc6;
+  border-radius: 0.85rem;
+  background: #dfe8e5;
+}
+
+.listening-scene-strip-image {
+  object-fit: cover;
+  object-position: center 42%;
+}
+
+.listening-scene-strip figcaption {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: grid;
+  gap: 0.15rem;
+  max-width: min(31rem, calc(100% - 1.5rem));
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: 0.65rem;
+  background: rgb(23 37 35 / 88%);
+  color: #ffffff;
+}
+
+.listening-scene-strip figcaption strong {
+  font-size: 0.86rem;
+}
+
+.listening-scene-strip figcaption span {
+  color: #e8f0ee;
+  font-size: 0.72rem;
+}
+
+.ab-playback-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.ab-playback-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 1.2rem;
+  border: 1px solid #b8cbc6;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  box-shadow: 0 0.45rem 1.2rem rgb(23 47 42 / 5%);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.ab-playback-card-b {
+  background: #f7fafb;
+}
+
+.ab-playback-card-preparing {
+  border-color: #d4a94f;
+  background: #fffaf0;
+  box-shadow: inset 0 0 0 1px #d4a94f;
+}
+
+.ab-playback-card-playing {
+  border-color: #145f52;
+  background: #edf6f3;
+  box-shadow:
+    inset 0 0 0 1px #145f52,
+    0 0.55rem 1.3rem rgb(20 95 82 / 9%);
+}
+
+.ab-card-heading {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.ab-card-letter {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.7rem;
+  background: #274e66;
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 850;
+}
+
+.ab-playback-card-b .ab-card-letter {
+  background: #145f52;
+}
+
+.ab-card-heading h3 {
+  margin: 0;
+  color: #172523;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+
+.ab-card-kicker {
+  margin: 0 0 0.15rem;
+  color: #4b625d;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.ab-card-description {
+  margin: 0.85rem 0 0;
+  color: #36544d;
+  font-size: 0.9rem;
+}
+
+.ab-condition-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  margin: 0.85rem 0 0;
+}
+
+.ab-condition-list div {
+  display: flex;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.ab-condition-list dt,
+.ab-condition-list dd {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.ab-condition-list dt {
+  color: #4b625d;
+}
+
+.ab-condition-list dd {
+  color: #172523;
+  font-weight: 750;
+}
+
+.ab-card-state {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  margin: 0.9rem 0 0;
+  color: #36544d;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.ab-card-state span {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #82938f;
+}
+
+.ab-playback-card-ready .ab-card-state span,
+.ab-playback-card-playing .ab-card-state span {
+  background: #145f52;
+}
+
+.ab-playback-card-preparing .ab-card-state span {
+  background: #f3a712;
+}
+
+.ab-play-button {
+  width: 100%;
+  min-height: 3.15rem;
+  margin-top: auto;
+  font-size: 1rem;
+}
+
+.ab-support-note {
+  margin: 0.6rem 0 0.8rem;
+  color: #4b625d;
+  font-size: 0.78rem;
+}
+
+.listening-support-selector {
+  margin-top: 1.1rem;
+  padding: 1rem;
+  border: 1px solid #cedbd7;
+  border-radius: 0.85rem;
+  background: #fbfdfc;
+}
+
+.listening-support-selector legend {
+  padding: 0 0.35rem;
+  color: #172523;
+}
+
+.listening-support-options label {
+  justify-content: flex-start;
+  min-height: 3.4rem;
+  padding: 0.65rem 0.8rem;
+}
+
+.listening-support-options label:has(input:focus-visible) {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid #f3a712;
+  outline-offset: 2px;
+}
+
+.listening-support-options input {
+  flex: 0 0 auto;
+  accent-color: #145f52;
+}
+
+.support-option-copy {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.support-option-copy strong {
+  color: #172523;
+  font-size: 0.88rem;
+}
+
+.support-option-copy small {
+  color: #4b625d;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.listening-support-limitation {
+  margin: 0.65rem 0 0;
+  color: #4b625d;
+  font-size: 0.8rem;
+}
+
+.listening-transport-status {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #b8cbc6;
+  border-left-width: 4px;
+  border-radius: 0.7rem;
+  background: #f7fbfa;
+  color: #172523;
+  font-weight: 800;
+}
+
+.listening-transport-status-preparing {
+  border-left-color: #f3a712;
+  background: #fffaf0;
+}
+
+.listening-transport-status-playing {
+  border-left-color: #145f52;
+  background: #edf6f3;
+}
+
+.listening-transport-status-failed {
+  border-color: #d7b5b7;
+  border-left-color: #9c2f34;
+  background: #fff2f1;
+  color: #782126;
+}
+
+.listening-volume-confirmation {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  width: fit-content;
+  margin: 0.65rem 0 0;
+  color: #36544d;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.listening-volume-confirmation span {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #145f52;
+}
+
+.listening-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+  margin-top: 1rem;
+}
+
+.listening-details .scene-transcript,
+.listening-details .technical-detail {
+  max-width: none;
+  margin-top: 0;
+}
+
+.listening-limitation {
+  max-width: 68rem;
+  margin-bottom: 0;
+}
+
 .acknowledgement-confirmed {
   display: inline-block;
   margin: 0.5rem 0 1.25rem;
@@ -1302,6 +1623,7 @@ button:disabled {
 
   .profile-options,
   .support-options,
+  .ab-playback-grid,
   .listening-pair,
   .intervention-grid,
   .context-summary {
@@ -1364,6 +1686,120 @@ button:disabled {
     border-radius: 0.6rem;
   }
 
+  .listening-screen {
+    padding-inline: 1rem;
+  }
+
+  .listening-screen .screen-introduction {
+    margin: 0 0 0.75rem;
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+
+  .listening-screen .same-source-line {
+    margin-bottom: 0.65rem;
+    font-size: 0.95rem;
+  }
+
+  .listening-scene-strip {
+    margin-top: 0.75rem;
+  }
+
+  .listening-scene-strip-frame {
+    min-height: 7rem;
+    aspect-ratio: 3 / 1;
+  }
+
+  .listening-scene-strip figcaption {
+    right: 0.45rem;
+    bottom: 0.45rem;
+    max-width: calc(100% - 0.9rem);
+    padding: 0.4rem 0.55rem;
+  }
+
+  .listening-scene-strip figcaption strong {
+    font-size: 0.73rem;
+  }
+
+  .listening-scene-strip figcaption span {
+    font-size: 0.64rem;
+  }
+
+  .ab-playback-grid {
+    gap: 0.65rem;
+    margin-top: 0.75rem;
+  }
+
+  .ab-playback-card {
+    padding: 0.85rem;
+  }
+
+  .ab-card-letter {
+    width: 2.3rem;
+    height: 2.3rem;
+    font-size: 1rem;
+  }
+
+  .ab-card-heading {
+    gap: 0.65rem;
+  }
+
+  .ab-card-heading h3 {
+    font-size: 1.08rem;
+  }
+
+  .ab-card-description {
+    margin-top: 0.55rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .ab-condition-list {
+    gap: 0.25rem 0.75rem;
+    margin-top: 0.55rem;
+  }
+
+  .ab-condition-list dt,
+  .ab-condition-list dd {
+    font-size: 0.7rem;
+  }
+
+  .ab-card-state {
+    margin-top: 0.55rem;
+    font-size: 0.74rem;
+  }
+
+  .ab-play-button {
+    min-height: 2.75rem;
+    margin-top: 0.55rem;
+  }
+
+  .ab-support-note {
+    margin-top: 0.4rem;
+  }
+
+  .listening-support-selector {
+    margin-top: 0.85rem;
+    padding: 0.8rem;
+  }
+
+  .listening-support-options label,
+  .listening-support-options label:first-child,
+  .listening-support-options label:last-child {
+    min-height: 3rem;
+    padding: 0.55rem 0.7rem;
+  }
+
+  .listening-transport-status {
+    margin-top: 0.8rem;
+    padding: 0.7rem 0.8rem;
+    font-size: 0.82rem;
+  }
+
+  .listening-details {
+    grid-template-columns: 1fr;
+  }
+
   .context-summary div:nth-child(even) {
     border-left: 0;
   }
@@ -1389,5 +1825,9 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .experience-screen {
     animation: none;
+  }
+
+  .ab-playback-card {
+    transition: none;
   }
 }
