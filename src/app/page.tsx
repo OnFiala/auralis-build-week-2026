@@ -30,11 +30,16 @@ import {
 } from "../core/experience";
 import {
   FREQUENCY_GRID_HZ,
+  MANUAL_THRESHOLD_MAX_DB_HL,
+  MANUAL_THRESHOLD_MIN_DB_HL,
   MANUAL_PROFILE_ENTRY_LABEL,
   PREDEFINED_HEARING_PROFILES,
   frequencyKey,
   predefinedProfileById,
   type Ear,
+  type EarThresholdDraft,
+  type EarThresholds,
+  type FrequencyKey,
   type ProfileEntryOption,
 } from "../core/profile";
 
@@ -112,6 +117,279 @@ function formatTranscriptTime(startSeconds: number): string {
     .padStart(2, "0");
 
   return `${minutes}:${seconds}`;
+}
+
+const AUDIOGRAM_GRID_DB_HL = [
+  0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+] as const;
+const AUDIOGRAM_VIEWBOX_WIDTH = 680;
+const AUDIOGRAM_VIEWBOX_HEIGHT = 440;
+const AUDIOGRAM_PLOT_LEFT = 98;
+const AUDIOGRAM_PLOT_RIGHT = 640;
+const AUDIOGRAM_PLOT_TOP = 42;
+const AUDIOGRAM_PLOT_BOTTOM = 360;
+
+type AudiogramThresholds = EarThresholds | EarThresholdDraft;
+
+function audiogramX(index: number): number {
+  return (
+    AUDIOGRAM_PLOT_LEFT +
+    (index * (AUDIOGRAM_PLOT_RIGHT - AUDIOGRAM_PLOT_LEFT)) /
+      (FREQUENCY_GRID_HZ.length - 1)
+  );
+}
+
+function audiogramY(value: number): number {
+  return (
+    AUDIOGRAM_PLOT_TOP +
+    ((value - MANUAL_THRESHOLD_MIN_DB_HL) /
+      (MANUAL_THRESHOLD_MAX_DB_HL - MANUAL_THRESHOLD_MIN_DB_HL)) *
+      (AUDIOGRAM_PLOT_BOTTOM - AUDIOGRAM_PLOT_TOP)
+  );
+}
+
+function numericAudiogramValue(value: string | number): number | null {
+  if (typeof value === "string" && value.trim() === "") {
+    return null;
+  }
+
+  const numericValue = typeof value === "number" ? value : Number(value);
+
+  return Number.isFinite(numericValue) &&
+    numericValue >= MANUAL_THRESHOLD_MIN_DB_HL &&
+    numericValue <= MANUAL_THRESHOLD_MAX_DB_HL
+    ? numericValue
+    : null;
+}
+
+function describeThresholds(thresholds: AudiogramThresholds): string {
+  return FREQUENCY_GRID_HZ.map((frequency) => {
+    const value = thresholds[frequencyKey(frequency)];
+    const displayedValue =
+      typeof value === "string" && value.trim() === ""
+        ? "not entered"
+        : `${value} dB HL`;
+
+    return `${frequency} Hz: ${displayedValue}`;
+  }).join("; ");
+}
+
+function Audiogram({
+  profileLabel,
+  rightThresholds,
+  leftThresholds,
+}: Readonly<{
+  profileLabel: string;
+  rightThresholds: AudiogramThresholds;
+  leftThresholds: AudiogramThresholds;
+}>) {
+  const series = [
+    {
+      ear: "right",
+      thresholds: rightThresholds,
+    },
+    {
+      ear: "left",
+      thresholds: leftThresholds,
+    },
+  ] as const;
+  const plottedSeries = series.map((earSeries) => ({
+    ...earSeries,
+    points: FREQUENCY_GRID_HZ.map((frequency, index) => {
+      const value = numericAudiogramValue(
+        earSeries.thresholds[frequencyKey(frequency)],
+      );
+
+      return {
+        frequency,
+        value,
+        x: audiogramX(index),
+        y: value === null ? null : audiogramY(value),
+      };
+    }),
+  }));
+  const hasUnplottedValues = plottedSeries.some((earSeries) =>
+    earSeries.points.some((point) => point.y === null),
+  );
+  const accessibleDescription = `${profileLabel}. Right ear exact values: ${describeThresholds(
+    rightThresholds,
+  )}. Left ear exact values: ${describeThresholds(leftThresholds)}.`;
+
+  return (
+    <figure className="audiogram-figure">
+      <div className="audiogram-heading-row">
+        <div>
+          <p className="audiogram-kicker">Exact bilateral view</p>
+          <h3>Audiogram</h3>
+        </div>
+        <ul className="audiogram-legend" aria-label="Audiogram ear legend">
+          <li>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <line
+                className="audiogram-legend-line audiogram-right-line"
+                x1="1"
+                y1="10"
+                x2="19"
+                y2="10"
+              />
+              <circle
+                className="audiogram-right-marker"
+                cx="10"
+                cy="10"
+                r="4"
+              />
+            </svg>
+            <span>Right ear · circles · solid</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <line
+                className="audiogram-legend-line audiogram-left-line"
+                x1="1"
+                y1="10"
+                x2="19"
+                y2="10"
+              />
+              <path
+                className="audiogram-left-marker"
+                d="M6 6 L14 14 M14 6 L6 14"
+              />
+            </svg>
+            <span>Left ear · crosses · dashed</span>
+          </li>
+        </ul>
+      </div>
+
+      <svg
+        className="audiogram-chart"
+        viewBox={`0 0 ${AUDIOGRAM_VIEWBOX_WIDTH} ${AUDIOGRAM_VIEWBOX_HEIGHT}`}
+        role="img"
+        aria-labelledby="audiogram-chart-title"
+        aria-describedby="audiogram-chart-description"
+      >
+        <title id="audiogram-chart-title">
+          Bilateral audiogram for {profileLabel}
+        </title>
+        <desc id="audiogram-chart-description">{accessibleDescription}</desc>
+
+        <g aria-hidden="true">
+          <text className="audiogram-axis-title" x="18" y="24">
+            Hearing level (dB HL)
+          </text>
+          {AUDIOGRAM_GRID_DB_HL.map((level) => {
+            const y = audiogramY(level);
+
+            return (
+              <g key={level}>
+                <line
+                  className="audiogram-grid-line"
+                  x1={AUDIOGRAM_PLOT_LEFT}
+                  y1={y}
+                  x2={AUDIOGRAM_PLOT_RIGHT}
+                  y2={y}
+                />
+                {level % 20 === 0 ? (
+                  <text
+                    className="audiogram-axis-label"
+                    x={AUDIOGRAM_PLOT_LEFT - 18}
+                    y={y + 6}
+                    textAnchor="end"
+                  >
+                    {level}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
+
+          {FREQUENCY_GRID_HZ.map((frequency, index) => {
+            const x = audiogramX(index);
+
+            return (
+              <g key={frequency}>
+                <line
+                  className="audiogram-grid-line audiogram-grid-line-vertical"
+                  x1={x}
+                  y1={AUDIOGRAM_PLOT_TOP}
+                  x2={x}
+                  y2={AUDIOGRAM_PLOT_BOTTOM}
+                />
+                <text
+                  className="audiogram-axis-label"
+                  x={x}
+                  y={AUDIOGRAM_PLOT_BOTTOM + 31}
+                  textAnchor="middle"
+                >
+                  {frequency}
+                </text>
+              </g>
+            );
+          })}
+          <text
+            className="audiogram-axis-title"
+            x={(AUDIOGRAM_PLOT_LEFT + AUDIOGRAM_PLOT_RIGHT) / 2}
+            y={AUDIOGRAM_VIEWBOX_HEIGHT - 12}
+            textAnchor="middle"
+          >
+            Frequency (Hz)
+          </text>
+
+          {plottedSeries.map((earSeries) =>
+            earSeries.points.slice(0, -1).map((point, index) => {
+              const nextPoint = earSeries.points[index + 1];
+
+              return point.y !== null && nextPoint.y !== null ? (
+                <line
+                  key={`${earSeries.ear}-${point.frequency}-${nextPoint.frequency}`}
+                  className={`audiogram-series-line audiogram-${earSeries.ear}-line`}
+                  x1={point.x}
+                  y1={point.y}
+                  x2={nextPoint.x}
+                  y2={nextPoint.y}
+                />
+              ) : null;
+            }),
+          )}
+
+          {plottedSeries.map((earSeries) =>
+            earSeries.points.map((point) =>
+              point.y === null ? null : earSeries.ear === "right" ? (
+                <circle
+                  key={`${earSeries.ear}-${point.frequency}`}
+                  className="audiogram-right-marker"
+                  cx={point.x}
+                  cy={point.y}
+                  r="7"
+                />
+              ) : (
+                <path
+                  key={`${earSeries.ear}-${point.frequency}`}
+                  className="audiogram-left-marker"
+                  d={`M${point.x - 7} ${point.y - 7} L${point.x + 7} ${
+                    point.y + 7
+                  } M${point.x + 7} ${point.y - 7} L${point.x - 7} ${
+                    point.y + 7
+                  }`}
+                />
+              ),
+            ),
+          )}
+        </g>
+      </svg>
+
+      <figcaption>
+        Six exact octave-frequency points per ear. Lower dB HL values appear at
+        the top; higher values appear at the bottom. Lines only connect adjacent
+        entered points.
+      </figcaption>
+      {hasUnplottedValues ? (
+        <p className="audiogram-plot-note">
+          Missing, non-finite, or out-of-range values are not plotted or
+          approximated; the exact entry remains in the editor below.
+        </p>
+      ) : null}
+    </figure>
+  );
 }
 
 export default function HomePage() {
@@ -463,13 +741,22 @@ export default function HomePage() {
   }
 
   function renderProfileScreen() {
+    const profileLabel =
+      selectedPredefinedProfile?.displayName ?? MANUAL_PROFILE_ENTRY_LABEL;
+    const rightThresholds =
+      selectedPredefinedProfile?.rightThresholdsDbHl ??
+      experience.manualDraft.right;
+    const leftThresholds =
+      selectedPredefinedProfile?.leftThresholdsDbHl ??
+      experience.manualDraft.left;
+
     return (
       <section
         key="profile"
         className="experience-screen"
         aria-labelledby="profile-entry-heading"
       >
-        <p className="step-label">Choose one exact input</p>
+        <p className="step-label">Profile / Audiogram</p>
         <h2
           id="profile-entry-heading"
           ref={screenHeadingRef}
@@ -479,178 +766,197 @@ export default function HomePage() {
           Choose a hearing profile
         </h2>
         <p className="screen-introduction">
-          Choose one of three fixed synthetic examples or enter an audiogram.
-          Every option uses the same deterministic audio pipeline.
-        </p>
-        <p className="limitation">
-          These profiles are illustrative examples—not diagnoses—and do not
-          predict individual perception.
+          Choose one fixed synthetic example or enter exact values for each ear.
+          Every option uses the same comparison pipeline.
         </p>
 
-        <fieldset className="profile-selector" disabled={controlsLocked}>
-          <legend>Profile entry</legend>
-          <div className="profile-options">
-            {PREDEFINED_HEARING_PROFILES.map((profile) => (
-              <label key={profile.id}>
-                <input
-                  type="radio"
-                  name="profile-entry"
-                  value={profile.id}
-                  checked={experience.selectedProfileEntry === profile.id}
-                  onChange={() => selectProfileEntry(profile.id)}
-                />
-                <span>{profile.displayName}</span>
-              </label>
-            ))}
-            <label>
-              <input
-                type="radio"
-                name="profile-entry"
-                value="manual"
-                checked={experience.selectedProfileEntry === "manual"}
-                onChange={() => selectProfileEntry("manual")}
-              />
-              <span>{MANUAL_PROFILE_ENTRY_LABEL}</span>
-            </label>
-          </div>
-        </fieldset>
-
-        {selectedPredefinedProfile ? (
-          <>
-            <p>
-              Review the exact synthetic right- and left-ear values before
-              confirming this illustrative profile.
+        <div className="profile-workspace">
+          <div className="profile-entry-column">
+            <fieldset className="profile-selector" disabled={controlsLocked}>
+              <legend>Profile entry</legend>
+              <div className="profile-options">
+                {PREDEFINED_HEARING_PROFILES.map((profile) => (
+                  <label key={profile.id}>
+                    <input
+                      type="radio"
+                      name="profile-entry"
+                      value={profile.id}
+                      checked={experience.selectedProfileEntry === profile.id}
+                      onChange={() => selectProfileEntry(profile.id)}
+                    />
+                    <span>{profile.displayName}</span>
+                  </label>
+                ))}
+                <label>
+                  <input
+                    type="radio"
+                    name="profile-entry"
+                    value="manual"
+                    checked={experience.selectedProfileEntry === "manual"}
+                    onChange={() => selectProfileEntry("manual")}
+                  />
+                  <span>{MANUAL_PROFILE_ENTRY_LABEL}</span>
+                </label>
+              </div>
+            </fieldset>
+            <p className="profile-selection-note">
+              Three profiles are fixed synthetic examples. Manual entry remains
+              exact and separate for the right and left ears.
             </p>
-            <div className="table-scroll">
-              <table>
-                <caption>
-                  {selectedPredefinedProfile.displayName}: exact fixed synthetic
-                  thresholds
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Frequency</th>
-                    <th scope="col">Right ear (dB HL)</th>
-                    <th scope="col">Left ear (dB HL)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {FREQUENCY_GRID_HZ.map((frequency) => {
-                    const key = frequencyKey(frequency);
+          </div>
 
-                    return (
-                      <tr key={frequency}>
-                        <th scope="row">
-                          {frequency >= 1000
-                            ? `${frequency / 1000} kHz`
-                            : `${frequency} Hz`}
-                        </th>
-                        <td>
-                          {selectedPredefinedProfile.rightThresholdsDbHl[key]}
-                        </td>
-                        <td>
-                          {selectedPredefinedProfile.leftThresholdsDbHl[key]}
-                        </td>
+          <div className="profile-detail-column">
+            <Audiogram
+              profileLabel={profileLabel}
+              rightThresholds={rightThresholds}
+              leftThresholds={leftThresholds}
+            />
+
+            {selectedPredefinedProfile ? (
+              <>
+                <p className="profile-detail-introduction">
+                  Review the exact fixed values before confirming this synthetic
+                  illustrative profile.
+                </p>
+                <details className="profile-values-detail" open>
+                  <summary>Exact threshold values</summary>
+                  <div className="table-scroll profile-table-shell">
+                    <table className="profile-threshold-table">
+                      <caption>
+                        {selectedPredefinedProfile.displayName}: exact fixed
+                        synthetic thresholds
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Frequency</th>
+                          <th scope="col">Right ear (dB HL)</th>
+                          <th scope="col">Left ear (dB HL)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {FREQUENCY_GRID_HZ.map((frequency) => {
+                          const key = frequencyKey(frequency);
+
+                          return (
+                            <tr key={frequency}>
+                              <th scope="row">
+                                {frequency >= 1000
+                                  ? `${frequency / 1000} kHz`
+                                  : `${frequency} Hz`}
+                              </th>
+                              <td>
+                                {
+                                  selectedPredefinedProfile
+                                    .rightThresholdsDbHl[key]
+                                }
+                              </td>
+                              <td>
+                                {
+                                  selectedPredefinedProfile.leftThresholdsDbHl[
+                                    key
+                                  ]
+                                }
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+                <button
+                  type="button"
+                  onClick={confirmSelectedProfile}
+                  disabled={controlsLocked}
+                >
+                  Confirm {selectedPredefinedProfile.displayName}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="profile-detail-introduction">
+                  Edit the exact thresholds below. The graph reads these same
+                  values directly and does not smooth or approximate them.
+                </p>
+
+                <div className="table-scroll profile-table-shell">
+                  <table className="profile-threshold-table">
+                    <caption>
+                      {MANUAL_PROFILE_ENTRY_LABEL}: exact current thresholds
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Frequency</th>
+                        <th scope="col">Right ear (dB HL)</th>
+                        <th scope="col">Left ear (dB HL)</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <button
-              type="button"
-              onClick={confirmSelectedProfile}
-              disabled={controlsLocked}
-            >
-              Confirm {selectedPredefinedProfile.displayName}
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="explanation">
-              <p>
-                An audiogram records a threshold for each ear across pitches
-                from lower to higher frequency. These synthetic dB HL inputs are
-                not playback-volume settings.
+                    </thead>
+                    <tbody>
+                      {FREQUENCY_GRID_HZ.map((frequency) => {
+                        const key = frequencyKey(frequency);
+
+                        return (
+                          <tr key={frequency}>
+                            <th scope="row">
+                              {frequency >= 1000
+                                ? `${frequency / 1000} kHz`
+                                : `${frequency} Hz`}
+                            </th>
+                            {(["right", "left"] as const).map((ear) => (
+                              <td key={ear}>
+                                <input
+                                  aria-label={`${ear} ear at ${frequency} Hz`}
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="5"
+                                  inputMode="numeric"
+                                  value={experience.manualDraft[ear][key]}
+                                  disabled={controlsLocked}
+                                  onChange={(event) =>
+                                    updateManualValue(
+                                      ear,
+                                      frequency,
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {visible.lastEdit ? (
+                  <p className="state-line">{visible.lastEdit}</p>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={confirmSelectedProfile}
+                  disabled={controlsLocked}
+                >
+                  Confirm exact manual profile
+                </button>
+              </>
+            )}
+
+            <p className="state-line">{visible.profile}</p>
+            {visible.failure ? (
+              <p className="error-message" role="alert">
+                {visible.failure}
               </p>
-              <p>
-                A higher value applies more illustrative attenuation around that
-                frequency. It cannot reproduce an individual&apos;s perception
-                or recommend treatment or hearing support.
-              </p>
-            </div>
-
-            <div className="table-scroll">
-              <table>
-                <caption>
-                  Edit the right and left values separately, then confirm the
-                  exact profile.
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Frequency</th>
-                    <th scope="col">Right ear (dB HL)</th>
-                    <th scope="col">Left ear (dB HL)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {FREQUENCY_GRID_HZ.map((frequency) => {
-                    const key = frequencyKey(frequency);
-
-                    return (
-                      <tr key={frequency}>
-                        <th scope="row">
-                          {frequency >= 1000
-                            ? `${frequency / 1000} kHz`
-                            : `${frequency} Hz`}
-                        </th>
-                        {(["right", "left"] as const).map((ear) => (
-                          <td key={ear}>
-                            <input
-                              aria-label={`${ear} ear at ${frequency} Hz`}
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="5"
-                              inputMode="numeric"
-                              value={experience.manualDraft[ear][key]}
-                              disabled={controlsLocked}
-                              onChange={(event) =>
-                                updateManualValue(
-                                  ear,
-                                  frequency,
-                                  event.target.value,
-                                )
-                              }
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {visible.lastEdit ? (
-              <p className="state-line">{visible.lastEdit}</p>
             ) : null}
+          </div>
+        </div>
 
-            <button
-              type="button"
-              onClick={confirmSelectedProfile}
-              disabled={controlsLocked}
-            >
-              Confirm exact manual profile
-            </button>
-          </>
-        )}
-        <p className="state-line">{visible.profile}</p>
-        {visible.failure ? (
-          <p className="error-message" role="alert">
-            {visible.failure}
-          </p>
-        ) : null}
+        <p className="limitation profile-limitation">
+          Synthetic profiles and manually entered values are illustrative—not
+          diagnoses or predictions of individual perception.
+        </p>
       </section>
     );
   }

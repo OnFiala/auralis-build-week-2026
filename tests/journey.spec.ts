@@ -13,13 +13,47 @@ import {
   modelExplanationRequestSchema,
   type ModelExplanationRequest,
 } from "../src/contracts/runtime";
+import {
+  FREQUENCY_GRID_HZ,
+  frequencyKey,
+  predefinedProfileById,
+} from "../src/core/profile";
 
 const manualValues = {
   right: [20, 25, 30, 35, 45, 55],
   left: [25, 30, 35, 45, 60, 70],
 } as const;
 
-const frequencies = [250, 500, 1000, 2000, 4000, 8000] as const;
+function expectedAudiogramDescription(
+  profileLabel: string,
+  rightValues: readonly (number | string)[],
+  leftValues: readonly (number | string)[],
+): string {
+  const describe = (values: readonly (number | string)[]) =>
+    FREQUENCY_GRID_HZ.map(
+      (frequency, index) => `${frequency} Hz: ${values[index]} dB HL`,
+    ).join("; ");
+
+  return `${profileLabel}. Right ear exact values: ${describe(
+    rightValues,
+  )}. Left ear exact values: ${describe(leftValues)}.`;
+}
+
+async function expectAudiogramProjection(
+  page: Page,
+  profileLabel: string,
+  rightValues: readonly (number | string)[],
+  leftValues: readonly (number | string)[],
+): Promise<void> {
+  const graph = page.getByRole("img", {
+    name: `Bilateral audiogram for ${profileLabel}`,
+  });
+
+  await expect(graph).toBeVisible();
+  await expect(graph).toHaveAccessibleDescription(
+    expectedAudiogramDescription(profileLabel, rightValues, leftValues),
+  );
+}
 
 async function openExperience(page: Page): Promise<void> {
   const navigation = await page.goto("/");
@@ -32,17 +66,26 @@ async function openExperience(page: Page): Promise<void> {
   await expect(
     page.getByRole("heading", { name: "Choose a hearing profile", level: 2 }),
   ).toBeFocused();
+  await expect(page.getByRole("radio")).toHaveCount(4);
+  await expect(
+    page.getByRole("button", { name: "Continue to Scene" }),
+  ).toBeDisabled();
 }
 
 async function loadManualProfile(page: Page): Promise<void> {
   await page.getByRole("radio", { name: "Enter an audiogram" }).check();
+  const exactTable = page.getByRole("table", {
+    name: "Enter an audiogram: exact current thresholds",
+  });
+
+  await expect(exactTable).toBeVisible();
 
   for (const [ear, values] of Object.entries(manualValues) as [
     keyof typeof manualValues,
     (typeof manualValues)[keyof typeof manualValues],
   ][]) {
-    for (const [index, frequency] of frequencies.entries()) {
-      const input = page.getByRole("spinbutton", {
+    for (const [index, frequency] of FREQUENCY_GRID_HZ.entries()) {
+      const input = exactTable.getByRole("spinbutton", {
         name: `${ear} ear at ${frequency} Hz`,
       });
 
@@ -50,6 +93,16 @@ async function loadManualProfile(page: Page): Promise<void> {
       await expect(input).toHaveValue(String(values[index]));
     }
   }
+
+  await expectAudiogramProjection(
+    page,
+    "Enter an audiogram",
+    manualValues.right,
+    manualValues.left,
+  );
+  await expect(
+    page.getByRole("button", { name: "Continue to Scene" }),
+  ).toBeDisabled();
 
   await page
     .getByRole("button", { name: "Confirm exact manual profile" })
@@ -59,6 +112,9 @@ async function loadManualProfile(page: Page): Promise<void> {
       .getByText(/^Manual audiogram confirmed from revision \d+\.$/)
       .first(),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue to Scene" }),
+  ).toBeEnabled();
 }
 
 async function continueToScreen(
@@ -470,10 +526,50 @@ test("predefined profile completes one honest degraded journey", async ({
   });
 
   await openExperience(page);
+  const flatProfile = predefinedProfileById("flat-hearing-loss");
+
   await page.getByRole("radio", { name: "Flat hearing loss" }).check();
+  const flatRightValues = FREQUENCY_GRID_HZ.map(
+    (frequency) => flatProfile.rightThresholdsDbHl[frequencyKey(frequency)],
+  );
+  const flatLeftValues = FREQUENCY_GRID_HZ.map(
+    (frequency) => flatProfile.leftThresholdsDbHl[frequencyKey(frequency)],
+  );
+
+  await expectAudiogramProjection(
+    page,
+    flatProfile.displayName,
+    flatRightValues,
+    flatLeftValues,
+  );
+
+  const exactFlatTable = page.getByRole("table", {
+    name: `${flatProfile.displayName}: exact fixed synthetic thresholds`,
+  });
+  const flatRows = exactFlatTable.getByRole("row");
+
+  await expect(flatRows).toHaveCount(FREQUENCY_GRID_HZ.length + 1);
+  for (const [index, frequency] of FREQUENCY_GRID_HZ.entries()) {
+    const valueCells = flatRows.nth(index + 1).getByRole("cell");
+    const key = frequencyKey(frequency);
+
+    await expect(valueCells.nth(0)).toHaveText(
+      String(flatProfile.rightThresholdsDbHl[key]),
+    );
+    await expect(valueCells.nth(1)).toHaveText(
+      String(flatProfile.leftThresholdsDbHl[key]),
+    );
+  }
+
+  await expect(
+    page.getByRole("button", { name: "Continue to Scene" }),
+  ).toBeDisabled();
   await page
     .getByRole("button", { name: "Confirm Flat hearing loss" })
     .click();
+  await expect(
+    page.getByRole("button", { name: "Continue to Scene" }),
+  ).toBeEnabled();
   await continueToScreen(page, "Scene", "Prepare the family scene");
   await acknowledgeAndLoadSource(page);
   await continueToScreen(
