@@ -653,50 +653,95 @@ test("manual profile completes one attributable live journey", async ({
   await continueToScreen(
     page,
     "Explanation",
-    "Explain the current result",
+    "Understand this result",
   );
 
-  await page
-    .getByRole("button", { name: "Generate live explanation" })
-    .click();
+  const explanationScreen = page.locator(".explanation-screen");
+  const deterministicSummary = explanationScreen.locator(
+    ".explanation-deterministic-summary",
+  );
+  const continueToCompletion = page.getByRole("button", {
+    name: "Continue to Completion",
+  });
+
+  await expect(deterministicSummary).toBeVisible();
   await expect(
-    page
-      .getByRole("status")
-      .filter({ hasText: "Live GPT explanation: current and grounded." }),
+    deterministicSummary.getByRole("heading", { name: "What you compared" }),
   ).toBeVisible();
+  await expect(deterministicSummary).toContainText("Manual audiogram");
+  await expect(deterministicSummary).toContainText("Manually entered");
+  await expect(deterministicSummary).toContainText("Bilateral support");
+  await expect(deterministicSummary).toContainText("Right ear");
+  await expect(deterministicSummary).toContainText("Left ear");
+  await expect(deterministicSummary).toContainText("TV off");
+  await expect(deterministicSummary).toContainText("Closer, in front");
+  await expect(deterministicSummary).toContainText(
+    "Same validated family scene and timeline",
+  );
+  await expect(continueToCompletion).toBeDisabled();
+  expect(modelCalls).toBe(0);
+
+  await page.getByRole("button", { name: "Generate explanation" }).click();
+  await expect(
+    explanationScreen.getByRole("status").filter({
+      hasText:
+        "Live GPT explanation is current for this deterministic comparison.",
+    }),
+  ).toBeVisible();
+  const liveExplanation = explanationScreen.locator(".model-result-live");
+  await expect(
+    liveExplanation.getByText("Live GPT", { exact: true }),
+  ).toBeVisible();
+  await expect(liveExplanation).toContainText(
+    "A synthetic family dinner is in progress.",
+  );
+  await expect(liveExplanation).toContainText(
+    "Bilateral support is active, TV off removes the television contribution, and Closer, in front changes only the focused speaker position.",
+  );
+  await expect(liveExplanation).toContainText(
+    "The same source identity, timeline, overlapping speech, and room events remain in use.",
+  );
+  await expect(liveExplanation).toContainText(
+    "Individual perception can differ.",
+  );
+  await expect(continueToCompletion).toBeEnabled();
+  expect(modelCalls).toBe(1);
   await continueToScreen(
     page,
     "Completion",
-    "Complete this comparison",
+    "Your Auralis comparison",
   );
-  await page.getByRole("button", { name: "Complete experience" }).click();
 
   const completionResult = page.locator(".completion-result");
-  const completion = completionResult.getByRole("heading", {
-    name: "Your current Auralis comparison",
+  const completion = completionResult.getByText("Comparison complete", {
+    exact: true,
   });
   await expect(completion).toBeVisible();
   await expect(
-    completionResult.getByText("Complete — live", { exact: true }),
+    completionResult.getByRole("heading", { name: "Attributable summary" }),
+  ).toBeVisible();
+  const completionSummary = completionResult.locator(".completion-summary");
+  await expect(
+    completionSummary.getByText("Manual audiogram", { exact: true }),
   ).toBeVisible();
   await expect(
-    completionResult.getByText("Manual audiogram", { exact: true }),
+    completionSummary.getByText("Bilateral support", { exact: true }),
   ).toBeVisible();
   await expect(
-    completionResult.getByText("Bilateral support", { exact: true }),
+    completionSummary.getByText("TV off", { exact: true }),
   ).toBeVisible();
   await expect(
-    completionResult.getByText("TV off", { exact: true }),
+    completionSummary.getByText("Closer, in front", { exact: true }),
   ).toBeVisible();
   await expect(
-    completionResult.getByText("Closer, in front", { exact: true }),
+    completionSummary.getByText("Live GPT", { exact: true }),
   ).toBeVisible();
   await expect(
-    completionResult.getByText("Live GPT", { exact: true }),
+    completionResult.getByRole("button", { name: "Review explanation" }),
   ).toBeVisible();
 
   const visibleResultIdentity = (
-    await completionResult.locator(".completion-summary code").textContent()
+    await completionResult.locator(".completion-details code").textContent()
   )?.trim();
   const { raw, value: evidence } = await downloadedEvidence(page);
   const profile = evidence.profile as Record<string, unknown>;
@@ -733,6 +778,9 @@ test("manual profile completes one attributable live journey", async ({
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Download evidence" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Review explanation" }),
   ).toHaveCount(0);
 });
 
@@ -840,18 +888,43 @@ test("predefined profile completes one honest degraded journey", async ({
   await continueToScreen(
     page,
     "Explanation",
-    "Explain the current result",
+    "Understand this result",
   );
 
-  await page
-    .getByRole("button", { name: "Generate live explanation" })
-    .click();
+  const explanationScreen = page.locator(".explanation-screen");
+  const deterministicSummary = explanationScreen.locator(
+    ".explanation-deterministic-summary",
+  );
+  const continueToCompletion = page.getByRole("button", {
+    name: "Continue to Completion",
+  });
+
+  await expect(deterministicSummary).toBeVisible();
+  await expect(deterministicSummary).toContainText("Flat hearing loss");
+  await expect(deterministicSummary).toContainText("Synthetic predefined");
+  await expect(deterministicSummary).toContainText("No support");
+  await expect(deterministicSummary).toContainText("TV on");
+  await expect(deterministicSummary).toContainText("Original position");
+  await expect(continueToCompletion).toBeDisabled();
+  expect(modelCalls).toBe(0);
+
+  await page.getByRole("button", { name: "Generate explanation" }).click();
   await expect(
-    page.getByRole("status").filter({
+    explanationScreen.getByRole("status").filter({
       hasText:
-        "Live GPT explanation: degraded; deterministic audio remains available.",
+        "Live GPT unavailable; the deterministic comparison remains complete and usable.",
     }),
   ).toBeVisible();
+  await expect(
+    explanationScreen.locator(".degraded-core-message"),
+  ).toHaveText(
+    "Live GPT unavailable; the deterministic comparison remains complete and usable.",
+  );
+  await expect(explanationScreen.locator(".model-result-degraded")).toContainText(
+    "Live GPT explanation is unavailable. The deterministic audio comparison remains available.",
+  );
+  await expect(continueToCompletion).toBeEnabled();
+  expect(modelCalls).toBe(1);
 
   await page.getByRole("button", { name: "Back" }).click();
   await expect(
@@ -871,37 +944,46 @@ test("predefined profile completes one honest degraded journey", async ({
   await continueToScreen(
     page,
     "Explanation",
-    "Explain the current result",
+    "Understand this result",
   );
   await expect(
-    page.getByRole("status").filter({
+    explanationScreen.getByRole("status").filter({
       hasText:
-        "Live GPT explanation: degraded; deterministic audio remains available.",
+        "Live GPT unavailable; the deterministic comparison remains complete and usable.",
     }),
   ).toBeVisible();
+  expect(modelCalls).toBe(1);
   await continueToScreen(
     page,
     "Completion",
-    "Complete this comparison",
+    "Your Auralis comparison",
   );
-  await page.getByRole("button", { name: "Complete experience" }).click();
 
   const completionResult = page.locator(".completion-result");
   await expect(
     completionResult.getByRole("heading", {
-      name: "Your current Auralis comparison",
+      name: "Attributable summary",
     }),
   ).toBeVisible();
   await expect(
-    completionResult.getByText("Complete — degraded", { exact: true }),
+    completionResult.getByText("Comparison complete", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Live GPT", { exact: true })).toHaveCount(0);
+  const completionSummary = completionResult.locator(".completion-summary");
   await expect(
-    completionResult.getByText("Degraded", { exact: true }),
+    completionSummary.getByText("Degraded", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    completionResult.locator(".completion-degraded-truth"),
+  ).toHaveText(
+    "The deterministic comparison completed successfully; only Live GPT availability was limited.",
+  );
+  await expect(
+    completionResult.getByRole("button", { name: "Review explanation" }),
   ).toBeVisible();
 
   const visibleResultIdentity = (
-    await completionResult.locator(".completion-summary code").textContent()
+    await completionResult.locator(".completion-details code").textContent()
   )?.trim();
   const { raw, value: evidence } = await downloadedEvidence(page);
 

@@ -463,7 +463,6 @@ export default function HomePage() {
   const modelRequestInFlightRef = useRef(false);
   const visible = projectVisibleExperienceState(experience);
   const terminalCompletion = projectTerminalCompletion(experience);
-  const completionEligible = canCompleteExperience(experience);
   const selectedTransformation = currentTransformedResult(experience);
   const renderingMode: ExperienceComparisonMode | null =
     experience.renders.reference.status === "rendering"
@@ -757,6 +756,12 @@ export default function HomePage() {
       return;
     }
 
+    if (activeScreen === "explanation") {
+      flushSync(() => {
+        dispatch({ type: "experience-completed" });
+      });
+    }
+
     navigateTo(nextScreen[activeScreen]);
   }
 
@@ -794,10 +799,6 @@ export default function HomePage() {
     } finally {
       modelRequestInFlightRef.current = false;
     }
-  }
-
-  function completeExperience() {
-    dispatch({ type: "experience-completed" });
   }
 
   function startAnotherComparison() {
@@ -1900,90 +1901,183 @@ export default function HomePage() {
   }
 
   function renderExplanationScreen() {
+    const profile = experience.confirmedProfile;
+    const profileLabel = profile
+      ? profile.sourceType === "manual"
+        ? "Manual audiogram"
+        : profile.displayName
+      : "No confirmed profile";
+    const profileOrigin = profile
+      ? profile.sourceType === "manual"
+        ? "Manually entered"
+        : "Synthetic predefined"
+      : "Unavailable";
+    const currentEarStates = supportEarStates[experience.supportMode];
+    const modelStatus =
+      experience.modelState.status === "loading"
+        ? "Generating an explanation for the current comparison…"
+        : experience.modelState.status === "live"
+          ? "Live GPT explanation is current for this deterministic comparison."
+          : experience.modelState.status === "degraded"
+            ? "Live GPT unavailable; the deterministic comparison remains complete and usable."
+            : "Optional GPT explanation not requested.";
+    const hasModelAttempt = experience.modelAttemptsUsed > 0;
+
     return (
       <section
         key="explanation"
-        className="experience-screen"
+        className="experience-screen explanation-screen"
         aria-labelledby="live-explanation-heading"
       >
-        <p className="step-label">Grounded explanation</p>
+        <p className="step-label">UNDERSTAND THE COMPARISON</p>
         <h2
           id="live-explanation-heading"
           ref={screenHeadingRef}
           className="screen-heading"
           tabIndex={-1}
         >
-          Explain the current result
+          Understand this result
         </h2>
         <p className="screen-introduction">
-          Generate one fresh, bounded explanation for the current illustrative
-          result. No raw audiogram values are sent to the model.
+          Review the deterministic comparison first. A bounded GPT explanation
+          is optional and cannot change what you heard.
         </p>
 
-        <dl className="context-summary">
-          <div>
-            <dt>Profile</dt>
-            <dd>{visible.profile}</dd>
-          </div>
-          <div>
-            <dt>Support</dt>
-            <dd>{supportLabels[experience.supportMode]}</dd>
-          </div>
-          <div>
-            <dt>Television</dt>
-            <dd>{interventionLabels[experience.interventionState]}</dd>
-          </div>
-          <div>
-            <dt>Important speaker</dt>
-            <dd>
-              {speakerPositionLabels[experience.speakerPositionState]}
-            </dd>
-          </div>
-        </dl>
+        <div className="explanation-layout">
+          <section
+            className="explanation-deterministic-summary"
+            aria-labelledby="what-you-compared-heading"
+          >
+            <p className="explanation-panel-kicker">Deterministic result</p>
+            <h3 id="what-you-compared-heading">What you compared</h3>
+            <p className="explanation-panel-lead">
+              This comparison is complete and usable independently of GPT.
+            </p>
+            <dl className="explanation-summary-grid">
+              <div>
+                <dt>Profile</dt>
+                <dd>{profileLabel}</dd>
+              </div>
+              <div>
+                <dt>Origin</dt>
+                <dd>{profileOrigin}</dd>
+              </div>
+              <div>
+                <dt>Support for B</dt>
+                <dd>{supportLabels[experience.supportMode]}</dd>
+              </div>
+              <div>
+                <dt>Right ear</dt>
+                <dd>{currentEarStates.right}</dd>
+              </div>
+              <div>
+                <dt>Left ear</dt>
+                <dd>{currentEarStates.left}</dd>
+              </div>
+              <div>
+                <dt>Television</dt>
+                <dd>{interventionLabels[experience.interventionState]}</dd>
+              </div>
+              <div>
+                <dt>Important speaker</dt>
+                <dd>
+                  {speakerPositionLabels[experience.speakerPositionState]}
+                </dd>
+              </div>
+            </dl>
+            <div className="explanation-deterministic-proof">
+              <strong>Same validated family scene and timeline</strong>
+              <span>
+                The current deterministic transformation produced the result you
+                heard; GPT cannot change it.
+              </span>
+            </div>
+          </section>
 
-        <button
-          type="button"
-          onClick={() => void generateLiveExplanation()}
-          disabled={!canRequestModelExplanation(experience)}
-        >
-          {experience.modelState.status === "loading"
-            ? "Generating live explanation…"
-            : experience.modelState.status === "degraded"
-              ? "Retry live explanation"
-              : "Generate live explanation"}
-        </button>
+          <section
+            className={`gpt-explanation-panel gpt-explanation-panel-${experience.modelState.status}`}
+            aria-labelledby="optional-gpt-heading"
+            aria-busy={experience.modelState.status === "loading"}
+          >
+            <p className="explanation-panel-kicker">Optional layer</p>
+            <h3 id="optional-gpt-heading">Optional GPT explanation</h3>
+            <p className="explanation-panel-lead">
+              It explains the current result but cannot control audio, support,
+              communication conditions, or safety.
+            </p>
 
-        <p className="state-line" role="status" aria-live="polite">
-          {visible.model}
-        </p>
-        <p className="attempt-count">
-          Explanation attempts used: {experience.modelAttemptsUsed} of{" "}
-          {MAX_MODEL_ATTEMPTS_PER_SESSION}.
-        </p>
+            <button
+              type="button"
+              className="explanation-action"
+              onClick={() => void generateLiveExplanation()}
+              disabled={!canRequestModelExplanation(experience)}
+            >
+              {experience.modelState.status === "loading"
+                ? "Generating explanation…"
+                : hasModelAttempt
+                  ? "Retry explanation"
+                  : "Generate explanation"}
+            </button>
 
-        {experience.modelState.status === "live" ? (
-          <div className="model-result model-result-live">
-            <p className="model-badge">Live GPT</p>
-            <h3>Current grounded explanation</h3>
-            <p>{experience.modelState.result.sceneFraming}</p>
-            <p>{experience.modelState.result.audibleChange}</p>
-            <p>{experience.modelState.result.unchanged}</p>
-            <p>{experience.modelState.result.limitation}</p>
-          </div>
-        ) : null}
+            <p
+              className="model-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {modelStatus}
+            </p>
 
-        {experience.modelState.status === "degraded" ? (
-          <div className="model-result model-result-degraded" role="alert">
-            <p className="model-badge">Degraded</p>
-            <h3>Live explanation unavailable</h3>
-            <p>{experience.modelState.result.message}</p>
-          </div>
-        ) : null}
+            {hasModelAttempt ? (
+              <p className="attempt-count">
+                Attempt {experience.modelAttemptsUsed} of{" "}
+                {MAX_MODEL_ATTEMPTS_PER_SESSION} used.
+              </p>
+            ) : null}
 
-        <p className="limitation">
-          The explanation is not a diagnosis, prescription, or guarantee of
-          individual perception. The deterministic comparison remains available
-          when GPT is unavailable.
+            {experience.modelState.status === "live" ? (
+              <div className="model-result model-result-live">
+                <p className="model-badge">Live GPT</p>
+                <h4>Current grounded explanation</h4>
+                <dl className="model-result-structure">
+                  <div>
+                    <dt>Scene context</dt>
+                    <dd>{experience.modelState.result.sceneFraming}</dd>
+                  </div>
+                  <div>
+                    <dt>What changed</dt>
+                    <dd>{experience.modelState.result.audibleChange}</dd>
+                  </div>
+                  <div>
+                    <dt>What stayed the same</dt>
+                    <dd>{experience.modelState.result.unchanged}</dd>
+                  </div>
+                  <div>
+                    <dt>Limit</dt>
+                    <dd>{experience.modelState.result.limitation}</dd>
+                  </div>
+                </dl>
+              </div>
+            ) : null}
+
+            {experience.modelState.status === "degraded" ? (
+              <div className="model-result model-result-degraded">
+                <p className="model-badge">Degraded</p>
+                <h4>Live explanation unavailable</h4>
+                <p className="degraded-core-message">
+                  Live GPT unavailable; the deterministic comparison remains
+                  complete and usable.
+                </p>
+                <p>{experience.modelState.result.message}</p>
+              </div>
+            ) : null}
+          </section>
+        </div>
+
+        <p className="limitation explanation-limitation">
+          This experience and explanation are illustrative and non-clinical—not
+          a diagnosis, hearing-aid fitting, prescription, or prediction of
+          individual perception or benefit.
         </p>
       </section>
     );
@@ -1993,45 +2087,35 @@ export default function HomePage() {
     return (
       <section
         key="completion"
-        className="experience-screen"
+        className="experience-screen completion-screen"
         aria-labelledby="completion-heading"
       >
-        <p className="step-label">Your comparison</p>
+        <p className="step-label">COMPLETION</p>
         <h2
           id="completion-heading"
           ref={screenHeadingRef}
           className="screen-heading"
           tabIndex={-1}
         >
-          Complete this comparison
+          Your Auralis comparison
         </h2>
         <p className="screen-introduction">
-          Complete the current validated deterministic result and keep a
-          sanitized proof of the illustrative run.
+          A concise, attributable summary of the deterministic comparison you
+          completed.
         </p>
-        <button
-          type="button"
-          onClick={completeExperience}
-          disabled={
-            !completionEligible || experience.completionState !== "in-progress"
-          }
-        >
-          Complete experience
-        </button>
 
         {terminalCompletion ? (
           <div
             className="completion-result"
             aria-labelledby="completion-result-heading"
           >
-            <p className="model-badge">
-              {terminalCompletion.status === "complete-live"
-                ? "Complete — live"
-                : "Complete — degraded"}
-            </p>
-            <h3 id="completion-result-heading">
-              Your current Auralis comparison
-            </h3>
+            <div className="completion-result-heading">
+              <p className="completion-status">Comparison complete</p>
+              <h3 id="completion-result-heading">Attributable summary</h3>
+              <p>
+                The deterministic listening comparison completed successfully.
+              </p>
+            </div>
             <dl className="completion-summary">
               <div>
                 <dt>Profile</dt>
@@ -2054,37 +2138,103 @@ export default function HomePage() {
                 <dd>{terminalCompletion.speakerPosition}</dd>
               </div>
               <div>
-                <dt>Deterministic result identity</dt>
-                <dd>
-                  <code>{terminalCompletion.resultIdentity}</code>
-                </dd>
-              </div>
-              <div>
                 <dt>Explanation status</dt>
                 <dd>{terminalCompletion.explanationStatus}</dd>
               </div>
             </dl>
-            <p>{terminalCompletion.explanationAvailability}</p>
-            <p className="limitation">{terminalCompletion.limitation}</p>
-            <p>
-              <strong>Next action:</strong> {terminalCompletion.nextAction}
+
+            <section
+              className={`completion-explanation completion-explanation-${terminalCompletion.status}`}
+              aria-labelledby="completion-explanation-heading"
+            >
+              <p className="model-badge">
+                {terminalCompletion.explanationStatus}
+              </p>
+              <h3 id="completion-explanation-heading">
+                Explanation availability
+              </h3>
+              <p>{terminalCompletion.explanationAvailability}</p>
+              {terminalCompletion.status === "complete-degraded" ? (
+                <p className="completion-degraded-truth">
+                  The deterministic comparison completed successfully; only Live
+                  GPT availability was limited.
+                </p>
+              ) : (
+                <p>
+                  The explanation is grounded in this completed result and does
+                  not change the deterministic audio.
+                </p>
+              )}
+            </section>
+
+            <p className="limitation completion-limitation">
+              {terminalCompletion.limitation}
             </p>
-            <p>
-              The downloadable JSON is a sanitized, attributable proof of this
-              illustrative run. It is not a clinical report.
-            </p>
-            <div className="button-row">
-              <button type="button" onClick={downloadCurrentEvidence}>
-                Download evidence
-              </button>
-              <button type="button" onClick={startAnotherComparison}>
+
+            <div className="completion-next-action">
+              <span>One bounded next action</span>
+              <strong>{terminalCompletion.nextAction}</strong>
+            </div>
+
+            <div className="completion-actions">
+              <button
+                className="completion-primary-action"
+                type="button"
+                onClick={startAnotherComparison}
+              >
                 Start another comparison
               </button>
+              <div className="completion-secondary-actions">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={downloadCurrentEvidence}
+                >
+                  Download evidence
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => navigateTo("explanation")}
+                >
+                  Review explanation
+                </button>
+              </div>
             </div>
+
+            <p className="completion-evidence-note">
+              Downloaded evidence is a sanitized, attributable proof of this
+              illustrative run—not a clinical report.
+            </p>
+
+            <details className="completion-details">
+              <summary>Result details</summary>
+              <dl>
+                <div>
+                  <dt>Deterministic result identity</dt>
+                  <dd>
+                    <code>{terminalCompletion.resultIdentity}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Completion classification</dt>
+                  <dd>
+                    {terminalCompletion.status === "complete-live"
+                      ? "Complete — live"
+                      : "Complete — degraded"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Evidence</dt>
+                  <dd>Sanitized attributable JSON available</dd>
+                </div>
+              </dl>
+            </details>
           </div>
         ) : (
-          <p className="state-line">
-            Completion state: ready. Confirm to create the terminal summary.
+          <p className="state-line" role="status">
+            Completion is unavailable because the current result is no longer
+            eligible.
           </p>
         )}
       </section>
