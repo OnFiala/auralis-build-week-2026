@@ -131,19 +131,49 @@ async function continueToScreen(
 }
 
 async function acknowledgeAndLoadSource(page: Page): Promise<void> {
+  const continueToListening = page.getByRole("button", {
+    name: "Continue to Listening",
+  });
+  const sceneImage = page.getByRole("img", {
+    name: "A multigenerational family talking in a living room, with a television on the left and kitchen activity on the right.",
+  });
+  const sourceList = page.getByRole("list", {
+    name: "Family scene sound sources",
+  });
+
+  await expect(sceneImage).toBeVisible();
+  await expect(sceneImage).toHaveAttribute(
+    "src",
+    /auralis-family-scene\.png/,
+  );
+  await expect(sourceList.getByRole("listitem")).toHaveCount(4);
+  for (const source of [
+    "Important speaker",
+    "Overlapping speakers",
+    "Television",
+    "Kitchen / room",
+  ]) {
+    await expect(sourceList.getByText(source, { exact: true })).toBeVisible();
+  }
+  await expect(continueToListening).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Stop immediately" }),
+  ).toHaveCount(0);
+  await expect(page.getByText(/^Playback:/)).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Load family scene" }).click();
+  await expect(
+    page.getByText("Family scene ready.", { exact: true }),
+  ).toBeVisible({ timeout: 60_000 });
+  await expect(continueToListening).toBeDisabled();
+  await expect(page.getByText(/^Playback:/)).toHaveCount(0);
+
   await page
     .getByRole("checkbox", {
-      name: /I have set my device to a low volume/,
+      name: /I’m listening at a low volume/,
     })
     .check();
-  await page
-    .getByRole("button", { name: "Load validated family scene" })
-    .click();
-  await expect(
-    page.getByText("Family scene: ready, 64.0 s at 24000 Hz.", {
-      exact: true,
-    }).first(),
-  ).toBeVisible({ timeout: 60_000 });
+  await expect(continueToListening).toBeEnabled();
 }
 
 async function assertAccessibleSceneTranscript(page: Page): Promise<number> {
@@ -329,7 +359,7 @@ test("manual profile completes one attributable live journey", async ({
   await continueToScene.focus();
   await continueToScene.press("Enter");
   await expect(
-    page.getByRole("heading", { name: "Prepare the family scene", level: 2 }),
+    page.getByRole("heading", { name: "Meet the family scene", level: 2 }),
   ).toBeFocused();
   await expect(page.locator(".experience-screen")).toHaveCSS(
     "animation-name",
@@ -347,7 +377,7 @@ test("manual profile completes one attributable live journey", async ({
       .getByText(/^Manual audiogram confirmed from revision \d+\.$/)
       .first(),
   ).toBeVisible();
-  await continueToScreen(page, "Scene", "Prepare the family scene");
+  await continueToScreen(page, "Scene", "Meet the family scene");
   await acknowledgeAndLoadSource(page);
   await assertAccessibleSceneTranscript(page);
   await continueToScreen(
@@ -366,7 +396,7 @@ test("manual profile completes one attributable live journey", async ({
   ).toBeEnabled();
   await page.getByRole("button", { name: "Back" }).click();
   await expect(
-    page.getByRole("heading", { name: "Prepare the family scene", level: 2 }),
+    page.getByRole("heading", { name: "Meet the family scene", level: 2 }),
   ).toBeFocused();
   await continueToScreen(
     page,
@@ -570,7 +600,7 @@ test("predefined profile completes one honest degraded journey", async ({
   await expect(
     page.getByRole("button", { name: "Continue to Scene" }),
   ).toBeEnabled();
-  await continueToScreen(page, "Scene", "Prepare the family scene");
+  await continueToScreen(page, "Scene", "Meet the family scene");
   await acknowledgeAndLoadSource(page);
   await continueToScreen(
     page,

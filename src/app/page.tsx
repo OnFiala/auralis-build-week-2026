@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -108,6 +109,36 @@ const speakerPositionLabels: Record<
   "original-position": "Original position",
   "closer-in-front": "Closer, in front",
 };
+
+const sceneSources = [
+  {
+    id: "important-speaker",
+    label: "Important speaker",
+    description: "The focused voice at the center of the family conversation.",
+  },
+  {
+    id: "overlapping-speakers",
+    label: "Overlapping speakers",
+    description: "Additional family voices sharing the same scene and timeline.",
+  },
+  {
+    id: "television",
+    label: "Television",
+    description: "A synthetic television contribution from the living room.",
+  },
+  {
+    id: "kitchen-room",
+    label: "Kitchen / room",
+    description: "Sparse kitchen and household events around the conversation.",
+  },
+] as const;
+
+const sceneSourceStatusLabels = {
+  idle: "Family scene not loaded.",
+  loading: "Loading and validating the family scene…",
+  ready: "Family scene ready.",
+  failed: "Family scene unavailable. Try loading it again.",
+} as const;
 
 function formatTranscriptTime(startSeconds: number): string {
   const minutes = Math.floor(startSeconds / 60);
@@ -965,65 +996,141 @@ export default function HomePage() {
     return (
       <section
         key="scene"
-        className="experience-screen"
+        className="experience-screen scene-screen"
         aria-labelledby="source-heading"
       >
-        <p className="step-label">One validated source</p>
+        <p className="step-label">Family scene</p>
         <h2
           id="source-heading"
           ref={screenHeadingRef}
           className="screen-heading"
           tabIndex={-1}
         >
-          Prepare the family scene
+          Meet the family scene
         </h2>
         <p className="screen-introduction">
-          Four owner-approved synthetic stems form one synchronized family
-          scene. Every comparison uses this same source and timeline.
-        </p>
-        <p className="limitation">
-          No external recording, stock sample, real television content, or music
-          is used.
+          One 64-second synthetic family scene · four synchronized sources ·
+          the same timeline throughout.
         </p>
 
-        <label className="acknowledgement">
-          <input
-            type="checkbox"
-            checked={experience.lowVolumeAcknowledged}
-            disabled={controlsLocked}
-            onChange={(event) =>
-              dispatch({
-                type: "low-volume-acknowledgement-changed",
-                acknowledged: event.target.checked,
-              })
-            }
-          />
-          <span>
-            I have set my device to a low volume and understand that digital
-            validation cannot guarantee physical listening level.
-          </span>
-        </label>
+        <div className="scene-setup-grid">
+          <div className="scene-context-column">
+            <figure className="scene-figure">
+              <div className="scene-image-frame">
+                <Image
+                  className="scene-image"
+                  src="/media/auralis-family-scene.png"
+                  width={1672}
+                  height={941}
+                  sizes="(max-width: 44rem) calc(100vw - 3.5rem), (max-width: 78rem) 62vw, 760px"
+                  alt="A multigenerational family talking in a living room, with a television on the left and kitchen activity on the right."
+                />
+                <div className="scene-source-badges" aria-hidden="true">
+                  {sceneSources.map((source) => (
+                    <span
+                      key={source.id}
+                      className={`scene-source-badge scene-source-badge-${source.id}`}
+                    >
+                      {source.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <figcaption>
+                Original illustrative family context—not a synchronized video
+                frame or a measured spatial model.
+              </figcaption>
+            </figure>
 
-        <button
-          type="button"
-          onClick={() => void loadSource()}
-          disabled={
-            !experience.confirmedProfile ||
-            experience.source.status === "loading" ||
-            controlsLocked
-          }
-        >
-          {experience.source.status === "loading"
-            ? "Loading and validating…"
-            : "Load validated family scene"}
-        </button>
-        <p className="state-line">{visible.source}</p>
-        {sceneTranscriptDetail()}
-        {visible.failure ? (
-          <p className="error-message" role="alert">
-            {visible.failure}
-          </p>
-        ) : null}
+            <div
+              className="scene-source-guide"
+              aria-labelledby="scene-source-guide-heading"
+            >
+              <p className="scene-panel-kicker">What you will hear</p>
+              <h3 id="scene-source-guide-heading">Four scene sources</h3>
+              <ul
+                className="scene-source-list"
+                aria-label="Family scene sound sources"
+              >
+                {sceneSources.map((source) => (
+                  <li key={source.id}>
+                    <strong>{source.label}</strong>
+                    <span>{source.description}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <aside className="scene-setup-panel" aria-label="Scene setup">
+            <div className="scene-load-card">
+              <p className="scene-panel-kicker">1 · Load the scene</p>
+              <h3>Prepare the validated audio</h3>
+              <p>
+                Load the existing four synchronized stems. Audio will not start
+                on this screen.
+              </p>
+              <p
+                className={`scene-load-status scene-load-status-${experience.source.status}`}
+                aria-live="polite"
+              >
+                {sceneSourceStatusLabels[experience.source.status]}
+              </p>
+              <button
+                type="button"
+                onClick={() => void loadSource()}
+                disabled={
+                  !experience.confirmedProfile ||
+                  experience.source.status === "loading" ||
+                  controlsLocked
+                }
+              >
+                {experience.source.status === "loading"
+                  ? "Loading family scene…"
+                  : "Load family scene"}
+              </button>
+              {visible.failure ? (
+                <p className="error-message" role="alert">
+                  {visible.failure}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="scene-safety-card">
+              <p className="scene-panel-kicker">2 · Listen safely</p>
+              <h3>Start at low volume</h3>
+              <label className="scene-safety-acknowledgement">
+                <input
+                  type="checkbox"
+                  checked={experience.lowVolumeAcknowledged}
+                  disabled={controlsLocked}
+                  onChange={(event) =>
+                    dispatch({
+                      type: "low-volume-acknowledgement-changed",
+                      acknowledged: event.target.checked,
+                    })
+                  }
+                />
+                <span>
+                  I’m listening at a low volume and understand this is an
+                  illustrative comparison.
+                </span>
+              </label>
+              <p className="scene-safety-note">
+                Digital safety checks cannot guarantee the physical listening
+                level of your device.
+              </p>
+            </div>
+          </aside>
+        </div>
+
+        <div className="scene-transcript-region">
+          {sceneTranscriptDetail()}
+        </div>
+        <p className="limitation scene-limitation">
+          The visual and audio scene are synthetic, illustrative context—not a
+          diagnosis, prediction, or synchronized recording.
+        </p>
       </section>
     );
   }
