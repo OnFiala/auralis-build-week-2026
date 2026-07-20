@@ -2,7 +2,8 @@
 
 ## 1. Title and status
 
-**Status:** Approved Phase 7 present-time file tree; Phase 9 complete  
+**Status:** Approved Phase 7 present-time file tree; Phase 10 complete
+
 **Proposal date:** July 15, 2026  
 **Scope:** Phase 9 executable walking skeleton and Phase 10 approved Family slice only
 
@@ -177,14 +178,14 @@ It adds no product scope, dependency, architecture, implementation or future abs
 
 This document is the approved Phase 7 present-time file-tree definition as simplified by the owner-approved Phase 8 adversarial review.
 
-All 11 listed Phase 9 files have been created and published. All 21 listed Phase 10 files remain uncreated.
+All 11 listed Phase 9 files and 20 of the 21 listed Phase 10 files have been created and published. The optional `src/app/api/image/route.ts` remains intentionally absent because optional image generation is outside mandatory Phase 10 completion and the mandatory journey has no optional runtime dependency.
 
-Production deployment `dpl_BWWRJ5bHU1rtVRpFcRih1hzRKBtp` serves application commit `01bbe71c3cc787c7592b62eab6c4800a0092d6c3` at [https://auralis-build-week-2026.vercel.app](https://auralis-build-week-2026.vercel.app).
+Production deployment `dpl_EoTxpV2J2E1QBNF5q4ukLZG7uYfT` serves application commit `897b5d2fb802c78f7ae1644e48c6bdce47ce062b` at [https://auralis-build-week-2026.vercel.app](https://auralis-build-week-2026.vercel.app).
 
-Local smoke, accepted preview smoke for deployment `dpl_Gd9EqDmkg9Qy49wupkUms95KrkMW`, and production smoke passed. The browser smoke evidence was executed by the human owner in an external macOS Terminal because the Codex host cannot launch Chromium due to a host-level MachPort permission denial. This is a validation-host limitation, not a product failure, and no test or browser rule was weakened.
+The deterministic vertical slice is publicly functional. Public production has no `OPENAI_API_KEY`; live-explanation attempts therefore enter the truthful Degraded state without blocking deterministic audio, completion or evidence export. Live GPT was validated in the owner-controlled local environment.
 
 Deployment `dpl_AcfcSkLADG9uF4UB7SwVRJkRdPFm` remains classified as `ACCIDENTAL OUT-OF-GATE DEPLOYMENT — RETAINED, PROTECTED, NOT ACCEPTED AS PHASE 9 EVIDENCE`.
 
-Phase 9 is complete.
+Phase 10 implementation is complete, and Phase 10 acceptance is `PASS BY OWNER OVERRIDE`. The 20-run GPT reliability batch was not executed: 0/20 attempts were run, p50 and p95 were not measured, and the empirical 19/20 threshold was not verified. The resulting `HIGH` residual reliability risk is `ACCEPTED BY OWNER`.
 
-Phase 10 has not been started.
+Phase 11 has not been started.

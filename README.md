@@ -4,7 +4,11 @@
 
 Auralis is a project for OpenAI Build Week 2026.
 
-A Phase 9 executable walking skeleton is publicly deployed. It proves the application shell, trusted health boundary, build, dependency enforcement and local, preview and production smoke paths. The Auralis hearing experience is not implemented and remains Phase 10 scope.
+The Phase 10 deterministic vertical slice is implemented, owner-accepted and publicly deployed. It provides the browser-only profile flow, same-source audio comparison, illustrative support and environmental interventions, an accessible scene transcript, completion and sanitized evidence export.
+
+Public production intentionally has no `OPENAI_API_KEY`: explanation attempts enter a truthful Degraded state while the deterministic experience remains fully usable. Live GPT was validated in the owner-controlled local environment. The 20-run reliability batch was not executed, so the unmeasured reliability risk remains `HIGH — ACCEPTED BY OWNER`.
+
+Phase 11 has not started.
 
 ## Local shell
 
@@ -29,10 +33,13 @@ The check runs TypeScript validation, dependency-boundary enforcement, a product
 
 Canonical production URL: [https://auralis-build-week-2026.vercel.app](https://auralis-build-week-2026.vercel.app)
 
+- Application commit: `897b5d2fb802c78f7ae1644e48c6bdce47ce062b`
+- Production deployment: `dpl_EoTxpV2J2E1QBNF5q4ukLZG7uYfT`
+
 ## Documentation
 
 - [Auralis preparation](docs/Auralis_preparation_final.md)
 - [Auralis vs. OpenAI Build Week 2026 requirements](docs/AURALIS_VS_OPENAI_BUILD_WEEK_2026_REQUIREMENTS.md)
 - [OpenAI Build Week 2026 requirements and recommendations](docs/OPENAI_BUILD_WEEK_2026_REQUIREMENTS_RECOMMENDATIONS.md)
 
-Further product implementation remains controlled by the approved project phase gates.
+Further work remains controlled by the approved project phase gates.
