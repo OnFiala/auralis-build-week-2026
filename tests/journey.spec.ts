@@ -227,19 +227,41 @@ async function assertAccessibleSceneTranscript(page: Page): Promise<number> {
   return timeline.length;
 }
 
-async function playAndStop(
+async function playInterventionAndStop(
   page: Page,
-  buttonName: RegExp,
+  buttonName: string,
+  cardSelector: string,
+  preparingState: string,
   playingState: string,
+  stoppedState: string,
 ): Promise<void> {
+  const interventionsScreen = page.locator(".interventions-screen");
+  const status = interventionsScreen.locator(".intervention-transport-status");
+  const card = interventionsScreen.locator(cardSelector);
+  const continueToExplanation = page.getByRole("button", {
+    name: "Continue to Explanation",
+  });
+
   await page.getByRole("button", { name: buttonName }).click();
+  expect([preparingState, playingState]).toContain(await status.textContent());
+  const cardIdentityClass = cardSelector.slice(1);
+  expect([
+    `intervention-ab-card ${cardIdentityClass} intervention-ab-card-preparing`,
+    `intervention-ab-card ${cardIdentityClass} intervention-ab-card-playing`,
+  ]).toContain(await card.getAttribute("class"));
+  await expect(status).toHaveText(playingState, { timeout: 60_000 });
+  await expect(card).toHaveClass(/intervention-ab-card-playing/);
+  await expect(card.getByText("Now playing", { exact: true })).toBeVisible();
+  await expect(continueToExplanation).toBeDisabled();
   await expect(
-    page.getByText(playingState, { exact: true }),
-  ).toBeVisible({ timeout: 60_000 });
+    page.getByRole("button", { name: "Stop immediately" }),
+  ).toBeEnabled();
   await page.getByRole("button", { name: "Stop immediately" }).click();
+  await expect(status).toHaveText(stoppedState);
   await expect(
-    page.getByText("Playback: stopped.", { exact: true }),
-  ).toBeVisible();
+    page.getByRole("button", { name: "Stop immediately" }),
+  ).toBeDisabled();
+  await expect(continueToExplanation).toBeEnabled();
 }
 
 async function playListeningAndStop(
@@ -517,14 +539,116 @@ test("manual profile completes one attributable live journey", async ({
   await continueToScreen(
     page,
     "Interventions",
-    "Change the listening conditions",
+    "Change the communication conditions",
   );
+
+  const interventionsScreen = page.locator(".interventions-screen");
+  const interventionGroups = interventionsScreen.locator(
+    ".intervention-control-grid fieldset",
+  );
+  const interventionStateSummary = interventionsScreen.locator(
+    ".intervention-state-summary",
+  );
+  const supportContext = interventionsScreen.locator(
+    ".intervention-support-context",
+  );
+  const continueToExplanation = page.getByRole("button", {
+    name: "Continue to Explanation",
+  });
+  const interventionTransport = interventionsScreen.locator(
+    ".intervention-transport-status",
+  );
+  const sourceState = (source: string) =>
+    interventionStateSummary.locator(`[data-source="${source}"] dd`);
+
+  await expect(interventionGroups).toHaveCount(2);
+  await expect(interventionsScreen.getByRole("radio")).toHaveCount(4);
+  await expect(supportContext.getByRole("radio")).toHaveCount(0);
+  await expect(
+    interventionsScreen.getByRole("heading", {
+      name: "Source reference",
+      level: 4,
+    }),
+  ).toBeVisible();
+  await expect(
+    interventionsScreen.getByRole("heading", {
+      name: "Current illustrative result",
+      level: 4,
+    }),
+  ).toBeVisible();
+  await expect(supportContext).toContainText("Bilateral support");
+  await expect(supportContext.locator("dl div").nth(0).locator("dt")).toHaveText(
+    "Right ear",
+  );
+  await expect(supportContext.locator("dl div").nth(0).locator("dd")).toHaveText(
+    "Illustrative support",
+  );
+  await expect(supportContext.locator("dl div").nth(1).locator("dt")).toHaveText(
+    "Left ear",
+  );
+  await expect(supportContext.locator("dl div").nth(1).locator("dd")).toHaveText(
+    "Illustrative support",
+  );
+  await expect(
+    interventionsScreen.getByRole("radio", { name: "TV on" }),
+  ).toBeChecked();
+  await expect(
+    interventionsScreen.getByRole("radio", { name: "Original position" }),
+  ).toBeChecked();
+  await expect(sourceState("important-speaker")).toHaveText(
+    "Original position",
+  );
+  await expect(sourceState("overlapping-speakers")).toHaveText("Included");
+  await expect(sourceState("television")).toHaveText("Included");
+  await expect(sourceState("kitchen-room")).toHaveText("Included");
+  await expect(interventionTransport).toHaveText(
+    "Playback stopped · Current result ready · Bilateral support · TV on · Original position",
+  );
+  await expect(continueToExplanation).toBeEnabled();
+
   await page.getByRole("radio", { name: "TV off" }).check();
-  await page.getByRole("radio", { name: "Closer, in front" }).check();
-  await playAndStop(
+  await expect(sourceState("television")).toHaveText("Removed from audio");
+  await expect(sourceState("important-speaker")).toHaveText(
+    "Original position",
+  );
+  await expect(sourceState("overlapping-speakers")).toHaveText("Included");
+  await expect(sourceState("kitchen-room")).toHaveText("Included");
+  await expect(interventionTransport).toHaveText(
+    "Playback stopped · Conditions changed · Play B to prepare the current illustrative result.",
+  );
+  await expect(continueToExplanation).toBeDisabled();
+  await expect(
+    interventionsScreen.locator(".intervention-ab-card-b"),
+  ).toContainText("Needs refresh");
+
+  await playInterventionAndStop(
     page,
-    /^Play bilateral support result/,
-    "Playback: Bilateral support, TV off, Closer, in front.",
+    "Play B — Bilateral support current illustrative result",
+    ".intervention-ab-card-b",
+    "Preparing B · Bilateral support · TV off · Original position",
+    "Playing B · Bilateral support · TV off · Original position",
+    "Playback stopped · Current result ready · Bilateral support · TV off · Original position",
+  );
+
+  await page.getByRole("radio", { name: "Closer, in front" }).check();
+  await expect(sourceState("important-speaker")).toHaveText(
+    "Closer, in front",
+  );
+  await expect(sourceState("television")).toHaveText("Removed from audio");
+  await expect(sourceState("overlapping-speakers")).toHaveText("Included");
+  await expect(sourceState("kitchen-room")).toHaveText("Included");
+  await expect(interventionTransport).toHaveText(
+    "Playback stopped · Conditions changed · Play B to prepare the current illustrative result.",
+  );
+  await expect(continueToExplanation).toBeDisabled();
+
+  await playInterventionAndStop(
+    page,
+    "Play B — Bilateral support current illustrative result",
+    ".intervention-ab-card-b",
+    "Preparing B · Bilateral support · TV off · Closer, in front",
+    "Playing B · Bilateral support · TV off · Closer, in front",
+    "Playback stopped · Current result ready · Bilateral support · TV off · Closer, in front",
   );
   await continueToScreen(
     page,
@@ -711,7 +835,7 @@ test("predefined profile completes one honest degraded journey", async ({
   await continueToScreen(
     page,
     "Interventions",
-    "Change the listening conditions",
+    "Change the communication conditions",
   );
   await continueToScreen(
     page,
@@ -732,14 +856,17 @@ test("predefined profile completes one honest degraded journey", async ({
   await page.getByRole("button", { name: "Back" }).click();
   await expect(
     page.getByRole("heading", {
-      name: "Change the listening conditions",
+      name: "Change the communication conditions",
       level: 2,
     }),
   ).toBeFocused();
-  await playAndStop(
+  await playInterventionAndStop(
     page,
-    /^Play source reference/,
-    "Playback: reference, TV on, Original position.",
+    "Play A — Source reference for current conditions",
+    ".intervention-ab-card-a",
+    "Preparing A · Source reference · TV on · Original position",
+    "Playing A · Source reference · TV on · Original position",
+    "Playback stopped · Current result ready · No support · TV on · Original position",
   );
   await continueToScreen(
     page,

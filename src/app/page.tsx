@@ -103,6 +103,24 @@ const supportEarSummaries: Record<ExperienceSupportMode, string> = {
   bilateral: "Right: illustrative · Left: illustrative",
 };
 
+const supportEarStates: Record<
+  ExperienceSupportMode,
+  Readonly<{ right: string; left: string }>
+> = {
+  none: {
+    right: "No support",
+    left: "No support",
+  },
+  "left-one-sided": {
+    right: "No support",
+    left: "Illustrative support",
+  },
+  bilateral: {
+    right: "Illustrative support",
+    left: "Illustrative support",
+  },
+};
+
 const interventionLabels: Record<ExperienceInterventionState, string> = {
   "tv-on": "TV on",
   "tv-off": "TV off",
@@ -455,9 +473,6 @@ export default function HomePage() {
         : null;
   const isRendering = renderingMode !== null;
   const isPlaying = experience.playback.status === "playing";
-  const transportStatus = isRendering
-    ? "Preparing audio for playback…"
-    : visible.playback;
   const controlsLocked =
     isRendering || isPlaying || experience.source.status === "loading";
   const selectedPredefinedProfile =
@@ -485,6 +500,10 @@ export default function HomePage() {
     simulatedReady &&
     !isRendering &&
     experience.playback.status === "stopped";
+  const interventionComparisonReady =
+    canRequestModelExplanation(experience) &&
+    !isRendering &&
+    experience.playback.status === "stopped";
   const explanationReady = simulatedReady;
   const listeningTransportStatus =
     renderingMode === "reference"
@@ -505,6 +524,29 @@ export default function HomePage() {
       : experience.playback.status === "failed"
         ? "failed"
         : "stopped";
+  const interventionTransportStatus =
+    renderingMode === "reference"
+      ? `Preparing A · Source reference · ${interventionLabels[experience.interventionState]} · ${speakerPositionLabels[experience.speakerPositionState]}`
+      : renderingMode === "simulated"
+        ? `Preparing B · ${supportLabels[experience.supportMode]} · ${interventionLabels[experience.interventionState]} · ${speakerPositionLabels[experience.speakerPositionState]}`
+        : experience.playback.status === "playing"
+          ? experience.playback.mode === "reference"
+            ? `Playing A · Source reference · ${interventionLabels[experience.playback.interventionState]} · ${speakerPositionLabels[experience.playback.speakerPositionState]}`
+            : `Playing B · ${supportLabels[experience.playback.supportMode ?? "none"]} · ${interventionLabels[experience.playback.interventionState]} · ${speakerPositionLabels[experience.playback.speakerPositionState]}`
+          : experience.playback.status === "failed"
+            ? "Playback blocked · The audio request failed closed."
+            : simulatedReady
+              ? `Playback stopped · Current result ready · ${supportLabels[experience.supportMode]} · ${interventionLabels[experience.interventionState]} · ${speakerPositionLabels[experience.speakerPositionState]}`
+              : "Playback stopped · Conditions changed · Play B to prepare the current illustrative result.";
+  const interventionTransportKind = renderingMode
+    ? "preparing"
+    : experience.playback.status === "playing"
+      ? "playing"
+      : experience.playback.status === "failed"
+        ? "failed"
+        : simulatedReady
+          ? "ready"
+          : "stale";
 
   useEffect(
     () => () => {
@@ -702,7 +744,7 @@ export default function HomePage() {
       case "listening":
         return listeningComparisonReady;
       case "interventions":
-        return canRequestModelExplanation(experience);
+        return interventionComparisonReady;
       case "explanation":
         return canCompleteExperience(experience);
       case "completion":
@@ -1168,51 +1210,127 @@ export default function HomePage() {
     );
   }
 
-  function playbackButtons() {
+  function interventionPlaybackDock() {
+    const cardState = (
+      mode: ExperienceComparisonMode,
+      ready: boolean,
+    ): "preparing" | "playing" | "current" | "stale" => {
+      if (renderingMode === mode) {
+        return "preparing";
+      }
+
+      if (
+        experience.playback.status === "playing" &&
+        experience.playback.mode === mode
+      ) {
+        return "playing";
+      }
+
+      return ready ? "current" : "stale";
+    };
+    const referenceState = cardState("reference", referenceReady);
+    const simulatedState = cardState("simulated", simulatedReady);
+    const stateLabel = (state: ReturnType<typeof cardState>): string => {
+      switch (state) {
+        case "preparing":
+          return "Preparing";
+        case "playing":
+          return "Now playing";
+        case "current":
+          return "Current";
+        case "stale":
+          return "Needs refresh";
+      }
+    };
+
     return (
-      <div className="listening-pair">
-        <article className="listening-option">
-          <p className="comparison-letter">A</p>
-          <h3>Source reference</h3>
-          <p>The validated family scene before the illustrative profile result.</p>
-          <button
-            type="button"
-            onClick={() => void play("reference")}
-            disabled={
-              !experience.comparisonPlan ||
-              experience.source.status !== "ready" ||
-              !experience.lowVolumeAcknowledged ||
-              controlsLocked
-            }
-          >
-            Play source reference —{" "}
-            {interventionLabels[experience.interventionState]},{" "}
-            {speakerPositionLabels[experience.speakerPositionState]}
-          </button>
-        </article>
-        <article className="listening-option">
-          <p className="comparison-letter">B</p>
-          <h3>Illustrative result</h3>
+      <section
+        className="intervention-listening-dock"
+        aria-labelledby="intervention-listening-heading"
+      >
+        <div className="intervention-dock-heading">
+          <div>
+            <p className="intervention-dock-kicker">Current comparison</p>
+            <h3 id="intervention-listening-heading">
+              Listen to these conditions
+            </h3>
+          </div>
           <p>
-            The same source with{" "}
-            {supportLabels[experience.supportMode].toLowerCase()}.
+            Same validated source and timeline. Support applies only to B.
           </p>
-          <button
-            type="button"
-            onClick={() => void play("simulated")}
-            disabled={
-              !experience.comparisonPlan ||
-              experience.source.status !== "ready" ||
-              !experience.lowVolumeAcknowledged ||
-              controlsLocked
-            }
+        </div>
+
+        <div
+          className="intervention-ab-grid"
+          role="group"
+          aria-label="Intervention A and B playback"
+        >
+          <article
+            className={`intervention-ab-card intervention-ab-card-a intervention-ab-card-${referenceState}`}
           >
-            Play {supportLabels[experience.supportMode].toLowerCase()} result —{" "}
-            {interventionLabels[experience.interventionState]},{" "}
-            {speakerPositionLabels[experience.speakerPositionState]}
-          </button>
-        </article>
-      </div>
+            <div className="intervention-ab-title">
+              <span aria-hidden="true">A</span>
+              <div>
+                <p>Validated source</p>
+                <h4>Source reference</h4>
+              </div>
+            </div>
+            <p className="intervention-ab-context">
+              {interventionLabels[experience.interventionState]} ·{" "}
+              {speakerPositionLabels[experience.speakerPositionState]}
+            </p>
+            <p className="intervention-ab-state">
+              {stateLabel(referenceState)}
+            </p>
+            <button
+              type="button"
+              aria-label="Play A — Source reference for current conditions"
+              onClick={() => void play("reference")}
+              disabled={
+                !experience.comparisonPlan ||
+                experience.source.status !== "ready" ||
+                !experience.lowVolumeAcknowledged ||
+                controlsLocked
+              }
+            >
+              Play A
+            </button>
+          </article>
+
+          <article
+            className={`intervention-ab-card intervention-ab-card-b intervention-ab-card-${simulatedState}`}
+          >
+            <div className="intervention-ab-title">
+              <span aria-hidden="true">B</span>
+              <div>
+                <p>Current conditions</p>
+                <h4>Current illustrative result</h4>
+              </div>
+            </div>
+            <p className="intervention-ab-context">
+              {supportLabels[experience.supportMode]} ·{" "}
+              {interventionLabels[experience.interventionState]} ·{" "}
+              {speakerPositionLabels[experience.speakerPositionState]}
+            </p>
+            <p className="intervention-ab-state">
+              {stateLabel(simulatedState)}
+            </p>
+            <button
+              type="button"
+              aria-label={`Play B — ${supportLabels[experience.supportMode]} current illustrative result`}
+              onClick={() => void play("simulated")}
+              disabled={
+                !experience.comparisonPlan ||
+                experience.source.status !== "ready" ||
+                !experience.lowVolumeAcknowledged ||
+                controlsLocked
+              }
+            >
+              Play B
+            </button>
+          </article>
+        </div>
+      </section>
     );
   }
 
@@ -1509,81 +1627,88 @@ export default function HomePage() {
   }
 
   function renderInterventionsScreen() {
+    const televisionIncluded = experience.interventionState === "tv-on";
+    const speakerCloser =
+      experience.speakerPositionState === "closer-in-front";
+    const currentEarStates = supportEarStates[experience.supportMode];
+
     return (
       <section
         key="interventions"
-        className="experience-screen"
+        className="experience-screen interventions-screen"
         aria-labelledby="interventions-heading"
       >
-        <p className="step-label">Communication conditions</p>
+        <p className="step-label">COMMUNICATION CONDITIONS</p>
         <h2
           id="interventions-heading"
           ref={screenHeadingRef}
           className="screen-heading"
           tabIndex={-1}
         >
-          Change the listening conditions
+          Change the communication conditions
         </h2>
         <p className="screen-introduction">
-          Keep the same source and adjust only the television contribution or
-          the important speaker&apos;s position.
-        </p>
-        <p className="support-context">
-          Current B support:{" "}
-          <strong>{supportLabels[experience.supportMode]}</strong>
+          Change one condition, then listen to the same validated scene again.
         </p>
 
-        <div className="intervention-grid">
-          <div>
-            <fieldset
-              className="intervention-selector"
-              disabled={
-                !experience.confirmedProfile ||
-                experience.source.status !== "ready" ||
-                controlsLocked
-              }
-            >
-              <legend>Television contribution</legend>
-              <div className="intervention-options">
-                {(["tv-on", "tv-off"] as const).map((interventionState) => (
-                  <label key={interventionState}>
-                    <input
-                      type="radio"
-                      name="intervention-state"
-                      value={interventionState}
-                      checked={
-                        experience.interventionState === interventionState
-                      }
-                      onChange={() =>
-                        dispatch({
-                          type: "intervention-state-changed",
-                          interventionState,
-                        })
-                      }
-                    />
-                    <span>{interventionLabels[interventionState]}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            <p className="state-line">{visible.intervention}</p>
-            <p>{visible.interventionSummary}</p>
-          </div>
+        <div className="intervention-control-grid">
+          <fieldset
+            className="intervention-selector intervention-control-card"
+            disabled={
+              !experience.confirmedProfile ||
+              experience.source.status !== "ready" ||
+              controlsLocked
+            }
+          >
+            <legend>Television</legend>
+            <p>
+              Change only whether the television contribution is included in
+              the audio.
+            </p>
+            <div className="intervention-options">
+              {(["tv-on", "tv-off"] as const).map((interventionState) => (
+                <label key={interventionState}>
+                  <input
+                    type="radio"
+                    name="intervention-state"
+                    value={interventionState}
+                    checked={experience.interventionState === interventionState}
+                    onChange={() =>
+                      dispatch({
+                        type: "intervention-state-changed",
+                        interventionState,
+                      })
+                    }
+                  />
+                  <span>
+                    <strong>{interventionLabels[interventionState]}</strong>
+                    <small>
+                      {interventionState === "tv-on"
+                        ? "Television contribution included"
+                        : "Television contribution removed"}
+                    </small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
-          <div>
-            <fieldset
-              className="speaker-position-selector"
-              disabled={
-                !experience.confirmedProfile ||
-                experience.source.status !== "ready" ||
-                controlsLocked
-              }
-            >
-              <legend>Important-speaker position</legend>
-              <div className="speaker-position-options">
-                {(
-                  ["original-position", "closer-in-front"] as const
-                ).map((speakerPositionState) => (
+          <fieldset
+            className="speaker-position-selector intervention-control-card"
+            disabled={
+              !experience.confirmedProfile ||
+              experience.source.status !== "ready" ||
+              controlsLocked
+            }
+          >
+            <legend>Important speaker</legend>
+            <p>
+              Change only the important speaker&apos;s illustrative position
+              and contribution.
+            </p>
+            <div className="speaker-position-options">
+              {(["original-position", "closer-in-front"] as const).map(
+                (speakerPositionState) => (
                   <label key={speakerPositionState}>
                     <input
                       type="radio"
@@ -1599,21 +1724,173 @@ export default function HomePage() {
                         })
                       }
                     />
-                    <span>{speakerPositionLabels[speakerPositionState]}</span>
+                    <span>
+                      <strong>
+                        {speakerPositionLabels[speakerPositionState]}
+                      </strong>
+                      <small>
+                        {speakerPositionState === "original-position"
+                          ? "Original illustrative condition"
+                          : "Closer and centered in front"}
+                      </small>
+                    </span>
                   </label>
-                ))}
-              </div>
-            </fieldset>
-            <p className="state-line">{visible.speakerPosition}</p>
-            <p>{visible.speakerPositionSummary}</p>
-          </div>
+                ),
+              )}
+            </div>
+          </fieldset>
         </div>
 
-        {playbackButtons()}
-        <p className="playback-state" role="status" aria-live="polite">
-          {transportStatus}
+        <div className="intervention-visual-grid">
+          <div className="intervention-map-column">
+            <figure
+              className="intervention-scene-map"
+              aria-labelledby="intervention-map-title"
+              aria-describedby="intervention-map-description"
+            >
+              <div className="intervention-scene-frame">
+                <Image
+                  src="/media/auralis-family-scene.png"
+                  alt="A family talking in a connected living room and kitchen."
+                  fill
+                  sizes="(max-width: 700px) calc(100vw - 3rem), 760px"
+                  className="intervention-scene-image"
+                />
+                <div
+                  className={`intervention-tv-region ${
+                    televisionIncluded
+                      ? "intervention-tv-region-included"
+                      : "intervention-tv-region-removed"
+                  }`}
+                  aria-hidden="true"
+                >
+                  <span>Television</span>
+                  <strong>
+                    {televisionIncluded ? "Included" : "Removed from audio"}
+                  </strong>
+                </div>
+                <div
+                  className={`intervention-speaker-marker ${
+                    speakerCloser
+                      ? "intervention-speaker-marker-closer"
+                      : "intervention-speaker-marker-original"
+                  }`}
+                  aria-hidden="true"
+                >
+                  <span>Important speaker</span>
+                  <strong>
+                    {speakerCloser ? "Closer, in front" : "Original position"}
+                  </strong>
+                </div>
+                <div
+                  className="intervention-source-badge intervention-source-badge-overlap"
+                  aria-hidden="true"
+                >
+                  Overlapping speakers · Included
+                </div>
+                <div
+                  className="intervention-source-badge intervention-source-badge-room"
+                  aria-hidden="true"
+                >
+                  Kitchen / room · Included
+                </div>
+                <div
+                  className="intervention-listener-anchor"
+                  aria-hidden="true"
+                >
+                  Listener focus
+                </div>
+              </div>
+              <figcaption>
+                <strong id="intervention-map-title">
+                  Illustrative scene-state map
+                </strong>
+                <span id="intervention-map-description">
+                  Television is{" "}
+                  {televisionIncluded ? "included" : "removed from audio"}.
+                  The important speaker is in the{" "}
+                  {speakerCloser
+                    ? "closer, in-front condition"
+                    : "original-position condition"}
+                  . Overlapping speakers and kitchen or room sounds remain
+                  included.
+                </span>
+                <small>Position marker is illustrative and not to scale.</small>
+              </figcaption>
+            </figure>
+
+            <dl
+              className="intervention-state-summary"
+              aria-label="Current scene-source states"
+            >
+              <div data-source="important-speaker">
+                <dt>Important speaker</dt>
+                <dd>
+                  {speakerCloser ? "Closer, in front" : "Original position"}
+                </dd>
+              </div>
+              <div data-source="overlapping-speakers">
+                <dt>Overlapping speakers</dt>
+                <dd>Included</dd>
+              </div>
+              <div
+                data-source="television"
+                className={
+                  televisionIncluded
+                    ? undefined
+                    : "intervention-source-removed"
+                }
+              >
+                <dt>Television</dt>
+                <dd>
+                  {televisionIncluded ? "Included" : "Removed from audio"}
+                </dd>
+              </div>
+              <div data-source="kitchen-room">
+                <dt>Kitchen / room</dt>
+                <dd>Included</dd>
+              </div>
+            </dl>
+          </div>
+
+          <aside
+            className="intervention-support-context"
+            aria-labelledby="intervention-support-heading"
+          >
+            <p className="intervention-context-kicker">Read-only context</p>
+            <h3 id="intervention-support-heading">Current support for B</h3>
+            <strong>{supportLabels[experience.supportMode]}</strong>
+            <dl>
+              <div>
+                <dt>Right ear</dt>
+                <dd>{currentEarStates.right}</dd>
+              </div>
+              <div>
+                <dt>Left ear</dt>
+                <dd>{currentEarStates.left}</dd>
+              </div>
+            </dl>
+            <p>
+              Return to Listening to change support. This is illustrative
+              support—not a fitting, prescription, or prediction of benefit.
+            </p>
+            <details className="technical-detail intervention-technical-detail">
+              <summary>Technical condition details</summary>
+              <p>{visible.interventionSummary}</p>
+              <p>{visible.speakerPositionSummary}</p>
+            </details>
+          </aside>
+        </div>
+
+        {interventionPlaybackDock()}
+        <p
+          className={`intervention-transport-status intervention-transport-status-${interventionTransportKind}`}
+          role="status"
+          aria-live="polite"
+        >
+          {interventionTransportStatus}
         </p>
-        <p className="limitation">
+        <p className="limitation intervention-limitation">
           TV-off and speaker position are deterministic illustrative
           comparisons—not medical recommendations or guaranteed communication
           outcomes.
