@@ -66,6 +66,8 @@ type ActivePlayback = {
   gain: GainNode;
   resultIdentity: string;
   stopping: boolean;
+  ended: Promise<void>;
+  resolveEnded: () => void;
   onEnded: () => void;
   onInterrupted: () => void;
 };
@@ -372,8 +374,23 @@ export class BrowserAudioEngine {
     lowVolumeAcknowledged: boolean,
     callbacks: Readonly<{ onEnded: () => void; onInterrupted: () => void }>,
   ): Promise<PlaybackEvidence> {
-    if (this.active) {
-      throw new AudioSafetyError("Stop the current playback before starting another state.");
+    const previousActive = this.active;
+
+    if (previousActive) {
+      if (!previousActive.stopping) {
+        throw new AudioSafetyError("Stop the current playback before starting another state.");
+      }
+
+      const handoffToken = this.operationToken;
+      await previousActive.ended;
+
+      if (handoffToken !== this.operationToken) {
+        throw new AudioPlaybackCancelledError();
+      }
+
+      if (this.active !== null) {
+        throw new AudioSafetyError("The previous playback did not finish cleanly.");
+      }
     }
 
     const loadedSource = this.loadedSource;
@@ -413,6 +430,19 @@ export class BrowserAudioEngine {
     const source = context.createBufferSource();
     const gain = context.createGain();
     const now = context.currentTime;
+    let endedResolved = false;
+    let resolveEndedPromise!: () => void;
+    const ended = new Promise<void>((resolve) => {
+      resolveEndedPromise = resolve;
+    });
+    const resolveEnded = () => {
+      if (endedResolved) {
+        return;
+      }
+
+      endedResolved = true;
+      resolveEndedPromise();
+    };
 
     source.buffer = rendered.buffer;
     gain.gain.setValueAtTime(0, now);
@@ -424,16 +454,24 @@ export class BrowserAudioEngine {
       gain,
       resultIdentity: rendered.resultIdentity,
       stopping: false,
+      ended,
+      resolveEnded,
       onEnded: callbacks.onEnded,
       onInterrupted: callbacks.onInterrupted,
     };
 
     source.onended = () => {
-      if (this.active !== active) {
-        return;
+      const isCurrent = this.active === active;
+
+      if (isCurrent) {
+        this.active = null;
       }
 
-      this.active = null;
+      active.resolveEnded();
+
+      if (!isCurrent) {
+        return;
+      }
 
       if (!active.stopping) {
         active.onEnded();
@@ -647,6 +685,8 @@ export class BrowserAudioEngine {
       active.source.stop();
     } catch {
       // Output is already disconnected or stopped; remain fail-closed.
+    } finally {
+      active.resolveEnded();
     }
   }
 }

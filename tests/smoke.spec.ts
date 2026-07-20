@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("public walking skeleton reaches its trusted health boundary", async ({ page }) => {
+test("public Auralis welcome reaches its trusted health boundary", async ({ page }) => {
   const configuredUrl = process.env.PLAYWRIGHT_BASE_URL;
   let authenticatedOrigin: string | undefined;
 
@@ -21,18 +21,24 @@ test("public walking skeleton reaches its trusted health boundary", async ({ pag
   expect(navigation?.status()).toBe(200);
   expect(navigation?.headers()["www-authenticate"]).toBeUndefined();
   await expect(page.getByRole("heading", { name: "Auralis", level: 1 })).toBeVisible();
-  await expect(page.getByText("This is the executable system shell.")).toBeVisible();
+  await expect(
+    page.getByText("One family scene. Different listening conditions.", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(
     page.getByText(
-      "The deterministic Phase 10 hearing experience is implemented as an illustrative, non-clinical Build Week vertical slice—not a complete clinical product.",
+      "This is an illustrative, non-clinical experience—not a diagnosis, hearing-aid fitting, prescription, or prediction of individual perception.",
       { exact: true },
     ),
   ).toBeVisible();
-
-  await page.getByRole("button", { name: "Check system status" }).click();
   await expect(
-    page.getByRole("status").filter({ hasText: "System status: ready." }),
-  ).toHaveText("System status: ready.");
+    page.getByRole("button", { name: "Check system status" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Start the comparison" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Choose a hearing profile" }),
+  ).toBeFocused();
 
   const healthUrl = authenticatedOrigin
     ? new URL("/api/health", authenticatedOrigin).toString()

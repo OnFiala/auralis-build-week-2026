@@ -28,6 +28,10 @@ async function openExperience(page: Page): Promise<void> {
   await expect(
     page.getByRole("heading", { name: "Auralis", level: 1 }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Start the comparison" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Choose a hearing profile", level: 2 }),
+  ).toBeFocused();
 }
 
 async function loadManualProfile(page: Page): Promise<void> {
@@ -55,6 +59,19 @@ async function loadManualProfile(page: Page): Promise<void> {
       .getByText(/^Manual audiogram confirmed from revision \d+\.$/)
       .first(),
   ).toBeVisible();
+}
+
+async function continueToScreen(
+  page: Page,
+  screenName: string,
+  headingName: string,
+): Promise<void> {
+  await page
+    .getByRole("button", { name: `Continue to ${screenName}` })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: headingName, level: 2 }),
+  ).toBeFocused();
 }
 
 async function acknowledgeAndLoadSource(page: Page): Promise<void> {
@@ -218,6 +235,7 @@ test("manual profile completes one attributable live journey", async ({
   let modelCalls = 0;
   let capturedRequest: ModelExplanationRequest | null = null;
 
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.route("**/api/model", async (route) => {
     modelCalls += 1;
     const request = parseModelRequest(route);
@@ -249,8 +267,63 @@ test("manual profile completes one attributable live journey", async ({
 
   await openExperience(page);
   await loadManualProfile(page);
+  const continueToScene = page.getByRole("button", {
+    name: "Continue to Scene",
+  });
+  await continueToScene.focus();
+  await continueToScene.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Prepare the family scene", level: 2 }),
+  ).toBeFocused();
+  await expect(page.locator(".experience-screen")).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+
+  const backToProfile = page.getByRole("button", { name: "Back" });
+  await backToProfile.focus();
+  await backToProfile.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Choose a hearing profile", level: 2 }),
+  ).toBeFocused();
+  await expect(
+    page
+      .getByText(/^Manual audiogram confirmed from revision \d+\.$/)
+      .first(),
+  ).toBeVisible();
+  await continueToScreen(page, "Scene", "Prepare the family scene");
   await acknowledgeAndLoadSource(page);
-  const transcriptEntryCount = await assertAccessibleSceneTranscript(page);
+  await assertAccessibleSceneTranscript(page);
+  await continueToScreen(
+    page,
+    "Listening",
+    "Compare the same family moment",
+  );
+  await page.getByRole("button", { name: /^Play source reference/ }).click();
+  await expect(
+    page.getByText("Playback: reference, TV on, Original position.", {
+      exact: true,
+    }),
+  ).toBeVisible({ timeout: 60_000 });
+  await expect(
+    page.getByRole("button", { name: "Stop immediately" }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Prepare the family scene", level: 2 }),
+  ).toBeFocused();
+  await continueToScreen(
+    page,
+    "Listening",
+    "Compare the same family moment",
+  );
+  await expect(
+    page.getByText("Playback: stopped.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Stop immediately" }),
+  ).toBeDisabled();
+
   await playAndStop(
     page,
     /^Play source reference/,
@@ -263,15 +336,27 @@ test("manual profile completes one attributable live journey", async ({
   );
 
   await page.getByRole("radio", { name: "Bilateral support" }).check();
+  await playAndStop(
+    page,
+    /^Play bilateral support result/,
+    "Playback: Bilateral support, TV on, Original position.",
+  );
+  await continueToScreen(
+    page,
+    "Interventions",
+    "Change the listening conditions",
+  );
   await page.getByRole("radio", { name: "TV off" }).check();
   await page.getByRole("radio", { name: "Closer, in front" }).check();
-  await expect(
-    page.locator("details.scene-transcript").getByRole("listitem"),
-  ).toHaveCount(transcriptEntryCount);
   await playAndStop(
     page,
     /^Play bilateral support result/,
     "Playback: Bilateral support, TV off, Closer, in front.",
+  );
+  await continueToScreen(
+    page,
+    "Explanation",
+    "Explain the current result",
   );
 
   await page
@@ -282,6 +367,11 @@ test("manual profile completes one attributable live journey", async ({
       .getByRole("status")
       .filter({ hasText: "Live GPT explanation: current and grounded." }),
   ).toBeVisible();
+  await continueToScreen(
+    page,
+    "Completion",
+    "Complete this comparison",
+  );
   await page.getByRole("button", { name: "Complete experience" }).click();
 
   const completionResult = page.locator(".completion-result");
@@ -337,15 +427,13 @@ test("manual profile completes one attributable live journey", async ({
   await page
     .getByRole("button", { name: "Start another comparison" })
     .click();
+  await expect(
+    page.getByRole("heading", { name: "Choose a hearing profile", level: 2 }),
+  ).toBeFocused();
   await expect(completion).toHaveCount(0);
   await expect(
-    page.getByText("Family scene: not loaded.", { exact: true }).first(),
-  ).toBeVisible();
-  await expect(
-    page
-      .getByRole("status")
-      .filter({ hasText: "Live GPT explanation: not requested." }),
-  ).toBeVisible();
+    page.getByRole("button", { name: "Continue to Scene" }),
+  ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Download evidence" }),
   ).toHaveCount(0);
@@ -386,11 +474,32 @@ test("predefined profile completes one honest degraded journey", async ({
   await page
     .getByRole("button", { name: "Confirm Flat hearing loss" })
     .click();
+  await continueToScreen(page, "Scene", "Prepare the family scene");
   await acknowledgeAndLoadSource(page);
+  await continueToScreen(
+    page,
+    "Listening",
+    "Compare the same family moment",
+  );
+  await playAndStop(
+    page,
+    /^Play source reference/,
+    "Playback: reference, TV on, Original position.",
+  );
   await playAndStop(
     page,
     /^Play no support result/,
     "Playback: No support, TV on, Original position.",
+  );
+  await continueToScreen(
+    page,
+    "Interventions",
+    "Change the listening conditions",
+  );
+  await continueToScreen(
+    page,
+    "Explanation",
+    "Explain the current result",
   );
 
   await page
@@ -403,10 +512,33 @@ test("predefined profile completes one honest degraded journey", async ({
     }),
   ).toBeVisible();
 
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Change the listening conditions",
+      level: 2,
+    }),
+  ).toBeFocused();
   await playAndStop(
     page,
     /^Play source reference/,
     "Playback: reference, TV on, Original position.",
+  );
+  await continueToScreen(
+    page,
+    "Explanation",
+    "Explain the current result",
+  );
+  await expect(
+    page.getByRole("status").filter({
+      hasText:
+        "Live GPT explanation: degraded; deterministic audio remains available.",
+    }),
+  ).toBeVisible();
+  await continueToScreen(
+    page,
+    "Completion",
+    "Complete this comparison",
   );
   await page.getByRole("button", { name: "Complete experience" }).click();
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useReducer, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import {
   AudioPlaybackCancelledError,
@@ -37,13 +38,51 @@ import {
   type ProfileEntryOption,
 } from "../core/profile";
 
-type CheckState = "idle" | "checking" | "ready" | "unavailable";
+type ActiveScreen =
+  | "welcome"
+  | "profile"
+  | "scene"
+  | "listening"
+  | "interventions"
+  | "explanation"
+  | "completion";
 
-const statusText: Record<CheckState, string> = {
-  idle: "System status has not been checked.",
-  checking: "Checking system status…",
-  ready: "System status: ready.",
-  unavailable: "System status: unavailable.",
+type ExperienceScreen = Exclude<ActiveScreen, "welcome">;
+
+const experienceScreenOrder: readonly ExperienceScreen[] = [
+  "profile",
+  "scene",
+  "listening",
+  "interventions",
+  "explanation",
+  "completion",
+];
+
+const screenLabels: Record<ExperienceScreen, string> = {
+  profile: "Profile",
+  scene: "Scene",
+  listening: "Listening",
+  interventions: "Interventions",
+  explanation: "Explanation",
+  completion: "Completion",
+};
+
+const nextScreen: Record<Exclude<ActiveScreen, "completion">, ExperienceScreen> = {
+  welcome: "profile",
+  profile: "scene",
+  scene: "listening",
+  listening: "interventions",
+  interventions: "explanation",
+  explanation: "completion",
+};
+
+const previousScreen: Record<ExperienceScreen, ActiveScreen> = {
+  profile: "welcome",
+  scene: "profile",
+  listening: "scene",
+  interventions: "listening",
+  explanation: "interventions",
+  completion: "explanation",
 };
 
 const supportLabels: Record<ExperienceSupportMode, string> = {
@@ -75,22 +114,8 @@ function formatTranscriptTime(startSeconds: number): string {
   return `${minutes}:${seconds}`;
 }
 
-function isExpectedHealthResponse(value: unknown): boolean {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-
-  const health = value as Record<string, unknown>;
-  return (
-    Object.keys(health).length === 3 &&
-    health.status === "ok" &&
-    health.service === "auralis-shell" &&
-    health.phase === "9-walking-skeleton"
-  );
-}
-
 export default function HomePage() {
-  const [checkState, setCheckState] = useState<CheckState>("idle");
+  const [activeScreen, setActiveScreen] = useState<ActiveScreen>("welcome");
   const [sceneTranscript, setSceneTranscript] = useState<
     readonly SceneTranscriptEntry[]
   >([]);
@@ -99,6 +124,8 @@ export default function HomePage() {
     createInitialExperienceState(),
   );
   const audioEngineRef = useRef<BrowserAudioEngine | null>(null);
+  const screenHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const previousActiveScreenRef = useRef<ActiveScreen>("welcome");
   const runIdRef = useRef<string | null>(null);
   const modelRequestInFlightRef = useRef(false);
   const visible = projectVisibleExperienceState(experience);
@@ -109,12 +136,33 @@ export default function HomePage() {
     experience.renders.reference.status === "rendering" ||
     experience.renders.simulated.status === "rendering";
   const isPlaying = experience.playback.status === "playing";
+  const transportStatus = isRendering
+    ? "Preparing audio for playback…"
+    : visible.playback;
   const controlsLocked =
     isRendering || isPlaying || experience.source.status === "loading";
   const selectedPredefinedProfile =
     experience.selectedProfileEntry === "manual"
       ? null
       : predefinedProfileById(experience.selectedProfileEntry);
+  const referenceIdentity = comparisonResultIdentity(experience, "reference");
+  const simulatedIdentity = comparisonResultIdentity(experience, "simulated");
+  const referenceReady =
+    referenceIdentity !== null &&
+    experience.renders.reference.status === "ready" &&
+    experience.renders.reference.sourceIdentity === FAMILY_DINNER_SOURCE_ID &&
+    experience.renders.reference.resultIdentity === referenceIdentity;
+  const simulatedReady =
+    simulatedIdentity !== null &&
+    experience.renders.simulated.status === "ready" &&
+    experience.renders.simulated.sourceIdentity === FAMILY_DINNER_SOURCE_ID &&
+    experience.renders.simulated.resultIdentity === simulatedIdentity;
+  const sceneReady =
+    experience.confirmedProfile !== null &&
+    experience.source.status === "ready" &&
+    experience.lowVolumeAcknowledged;
+  const listeningComparisonReady = referenceReady && simulatedReady;
+  const explanationReady = simulatedReady;
 
   useEffect(
     () => () => {
@@ -123,30 +171,52 @@ export default function HomePage() {
     [],
   );
 
+  useEffect(() => {
+    if (previousActiveScreenRef.current === activeScreen) {
+      return;
+    }
+
+    screenHeadingRef.current
+      ?.closest("section")
+      ?.scrollIntoView({ block: "start" });
+    screenHeadingRef.current?.focus({ preventScroll: true });
+    previousActiveScreenRef.current = activeScreen;
+  }, [activeScreen]);
+
+  useEffect(() => {
+    if (activeScreen === "welcome") {
+      return;
+    }
+
+    let furthestValidScreen: ExperienceScreen = "profile";
+
+    if (experience.confirmedProfile) {
+      furthestValidScreen = "scene";
+    }
+
+    if (sceneReady) {
+      furthestValidScreen = "interventions";
+    }
+
+    if (sceneReady && explanationReady) {
+      furthestValidScreen = "explanation";
+    }
+
+    if (canCompleteExperience(experience)) {
+      furthestValidScreen = "completion";
+    }
+
+    if (
+      experienceScreenOrder.indexOf(activeScreen) >
+      experienceScreenOrder.indexOf(furthestValidScreen)
+    ) {
+      setActiveScreen(furthestValidScreen);
+    }
+  }, [activeScreen, experience, explanationReady, sceneReady]);
+
   function audioEngine(): BrowserAudioEngine {
     audioEngineRef.current ??= new BrowserAudioEngine();
     return audioEngineRef.current;
-  }
-
-  async function checkSystemStatus() {
-    setCheckState("checking");
-
-    try {
-      const response = await fetch("/api/health", {
-        method: "GET",
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-      });
-      const payload: unknown = await response.json();
-
-      if (!response.ok || !isExpectedHealthResponse(payload)) {
-        throw new Error("Unexpected health response");
-      }
-
-      setCheckState("ready");
-    } catch {
-      setCheckState("unavailable");
-    }
   }
 
   function updateManualValue(ear: Ear, frequency: number, value: string) {
@@ -268,6 +338,52 @@ export default function HomePage() {
     dispatch({ type: "playback-stopped" });
   }
 
+  function navigateTo(screen: ActiveScreen) {
+    if (isPlaying || isRendering) {
+      audioEngineRef.current?.stop();
+      flushSync(() => {
+        dispatch({ type: "playback-stopped" });
+      });
+    }
+
+    setActiveScreen(screen);
+  }
+
+  function canContinueFrom(screen: ActiveScreen): boolean {
+    switch (screen) {
+      case "welcome":
+        return true;
+      case "profile":
+        return experience.confirmedProfile !== null;
+      case "scene":
+        return sceneReady;
+      case "listening":
+        return listeningComparisonReady;
+      case "interventions":
+        return canRequestModelExplanation(experience);
+      case "explanation":
+        return canCompleteExperience(experience);
+      case "completion":
+        return false;
+    }
+  }
+
+  function continueExperience() {
+    if (activeScreen === "completion" || !canContinueFrom(activeScreen)) {
+      return;
+    }
+
+    navigateTo(nextScreen[activeScreen]);
+  }
+
+  function goBack() {
+    if (activeScreen === "welcome") {
+      return;
+    }
+
+    navigateTo(previousScreen[activeScreen]);
+  }
+
   async function generateLiveExplanation() {
     if (modelRequestInFlightRef.current) {
       return;
@@ -304,7 +420,10 @@ export default function HomePage() {
     audioEngineRef.current?.stop();
     runIdRef.current = null;
     setSceneTranscript([]);
-    dispatch({ type: "comparison-reset" });
+    flushSync(() => {
+      dispatch({ type: "comparison-reset" });
+    });
+    setActiveScreen("profile");
   }
 
   function downloadCurrentEvidence() {
@@ -318,51 +437,54 @@ export default function HomePage() {
     }
   }
 
-  return (
-    <main>
-      <header className="hero" aria-labelledby="auralis-heading">
-        <p className="eyebrow">OpenAI Build Week 2026</p>
-        <h1 id="auralis-heading">Auralis</h1>
-        <p className="tagline">See what hearing sounds like.</p>
+  function sceneTranscriptDetail() {
+    return sceneTranscript.length > 0 ? (
+      <details className="scene-transcript">
+        <summary>Scene transcript</summary>
         <p>
-          This is the executable system shell. It now hosts a bounded local Phase
-          10 deterministic audio proof.
+          All comparison states use the same underlying scene and timeline.
+          Processing changes the listening comparison, not the spoken wording.
         </p>
-        <p>
-          The deterministic Phase 10 hearing experience is implemented as an
-          illustrative, non-clinical Build Week vertical slice—not a complete
-          clinical product.
-        </p>
-        <p>
-          This local build contains only the first bounded deterministic proof,
-          not the complete product experience.
-        </p>
+        <ol>
+          {sceneTranscript.map((entry, index) => (
+            <li key={`${entry.startSeconds}-${entry.speaker}-${index}`}>
+              <div className="transcript-cue">
+                <time dateTime={`PT${entry.startSeconds}S`}>
+                  {formatTranscriptTime(entry.startSeconds)}
+                </time>
+                <strong className="transcript-speaker">{entry.speaker}</strong>
+              </div>
+              <p className="transcript-text">{entry.text}</p>
+            </li>
+          ))}
+        </ol>
+      </details>
+    ) : null;
+  }
 
-        <button
-          className="secondary-button"
-          type="button"
-          onClick={checkSystemStatus}
-          disabled={checkState === "checking"}
+  function renderProfileScreen() {
+    return (
+      <section
+        key="profile"
+        className="experience-screen"
+        aria-labelledby="profile-entry-heading"
+      >
+        <p className="step-label">Choose one exact input</p>
+        <h2
+          id="profile-entry-heading"
+          ref={screenHeadingRef}
+          className="screen-heading"
+          tabIndex={-1}
         >
-          {checkState === "checking" ? "Checking…" : "Check system status"}
-        </button>
-
-        <p className={`status status-${checkState}`} role="status" aria-live="polite">
-          {statusText[checkState]}
-        </p>
-      </header>
-
-      <section aria-labelledby="profile-entry-heading">
-        <p className="step-label">Step 1</p>
-        <h2 id="profile-entry-heading">Choose a profile entry</h2>
-        <p>
+          Choose a hearing profile
+        </h2>
+        <p className="screen-introduction">
           Choose one of three fixed synthetic examples or enter an audiogram.
-          Every option uses the same deterministic transformation, support and
-          browser-audio pipeline.
+          Every option uses the same deterministic audio pipeline.
         </p>
-        <p>
-          The named profiles are illustrative examples—not diagnoses—and do not
-          represent expected individual perception.
+        <p className="limitation">
+          These profiles are illustrative examples—not diagnoses—and do not
+          predict individual perception.
         </p>
 
         <fieldset className="profile-selector" disabled={controlsLocked}>
@@ -448,14 +570,13 @@ export default function HomePage() {
             <div className="explanation">
               <p>
                 An audiogram records a threshold for each ear across pitches
-                from lower to higher frequency. The values below are synthetic
-                dB HL inputs—not playback-volume settings.
+                from lower to higher frequency. These synthetic dB HL inputs are
+                not playback-volume settings.
               </p>
               <p>
                 A higher value applies more illustrative attenuation around that
-                frequency. This cannot reproduce an individual&apos;s
-                perception, diagnose a condition, or recommend treatment or
-                hearing support.
+                frequency. It cannot reproduce an individual&apos;s perception
+                or recommend treatment or hearing support.
               </p>
             </div>
 
@@ -531,15 +652,52 @@ export default function HomePage() {
           </p>
         ) : null}
       </section>
+    );
+  }
 
-      <section aria-labelledby="source-heading">
-        <p className="step-label">Step 2</p>
-        <h2 id="source-heading">Load the validated family scene</h2>
-        <p>
-          Four owner-approved synthetic stems form one synchronized source. No
-          external recording, stock sample, real television content, or music is
-          used.
+  function renderSceneScreen() {
+    return (
+      <section
+        key="scene"
+        className="experience-screen"
+        aria-labelledby="source-heading"
+      >
+        <p className="step-label">One validated source</p>
+        <h2
+          id="source-heading"
+          ref={screenHeadingRef}
+          className="screen-heading"
+          tabIndex={-1}
+        >
+          Prepare the family scene
+        </h2>
+        <p className="screen-introduction">
+          Four owner-approved synthetic stems form one synchronized family
+          scene. Every comparison uses this same source and timeline.
         </p>
+        <p className="limitation">
+          No external recording, stock sample, real television content, or music
+          is used.
+        </p>
+
+        <label className="acknowledgement">
+          <input
+            type="checkbox"
+            checked={experience.lowVolumeAcknowledged}
+            disabled={controlsLocked}
+            onChange={(event) =>
+              dispatch({
+                type: "low-volume-acknowledgement-changed",
+                acknowledged: event.target.checked,
+              })
+            }
+          />
+          <span>
+            I have set my device to a low volume and understand that digital
+            validation cannot guarantee physical listening level.
+          </span>
+        </label>
+
         <button
           type="button"
           onClick={() => void loadSource()}
@@ -554,47 +712,91 @@ export default function HomePage() {
             : "Load validated family scene"}
         </button>
         <p className="state-line">{visible.source}</p>
-        {sceneTranscript.length > 0 ? (
-          <details className="scene-transcript">
-            <summary>Scene transcript</summary>
-            <p>
-              All comparison states use the same underlying scene and timeline.
-              Processing changes the listening comparison, not the spoken
-              wording.
-            </p>
-            <ol>
-              {sceneTranscript.map((entry, index) => (
-                <li key={`${entry.startSeconds}-${entry.speaker}-${index}`}>
-                  <div className="transcript-cue">
-                    <time dateTime={`PT${entry.startSeconds}S`}>
-                      {formatTranscriptTime(entry.startSeconds)}
-                    </time>
-                    <strong className="transcript-speaker">
-                      {entry.speaker}
-                    </strong>
-                  </div>
-                  <p className="transcript-text">{entry.text}</p>
-                </li>
-              ))}
-            </ol>
-          </details>
+        {sceneTranscriptDetail()}
+        {visible.failure ? (
+          <p className="error-message" role="alert">
+            {visible.failure}
+          </p>
         ) : null}
       </section>
+    );
+  }
 
-      <section aria-labelledby="comparison-heading">
-        <p className="step-label">Step 3</p>
-        <h2 id="comparison-heading">Compare the exact same source</h2>
-        <p>
-          Reference and simulated playback reuse the same decoded four-stem
-          package. The selected illustrative support state changes only the
-          profile-derived per-ear filters.
+  function playbackButtons() {
+    return (
+      <div className="listening-pair">
+        <article className="listening-option">
+          <p className="comparison-letter">A</p>
+          <h3>Source reference</h3>
+          <p>The validated family scene before the illustrative profile result.</p>
+          <button
+            type="button"
+            onClick={() => void play("reference")}
+            disabled={
+              !experience.comparisonPlan ||
+              experience.source.status !== "ready" ||
+              !experience.lowVolumeAcknowledged ||
+              controlsLocked
+            }
+          >
+            Play source reference —{" "}
+            {interventionLabels[experience.interventionState]},{" "}
+            {speakerPositionLabels[experience.speakerPositionState]}
+          </button>
+        </article>
+        <article className="listening-option">
+          <p className="comparison-letter">B</p>
+          <h3>Illustrative result</h3>
+          <p>
+            The same source with{" "}
+            {supportLabels[experience.supportMode].toLowerCase()}.
+          </p>
+          <button
+            type="button"
+            onClick={() => void play("simulated")}
+            disabled={
+              !experience.comparisonPlan ||
+              experience.source.status !== "ready" ||
+              !experience.lowVolumeAcknowledged ||
+              controlsLocked
+            }
+          >
+            Play {supportLabels[experience.supportMode].toLowerCase()} result —{" "}
+            {interventionLabels[experience.interventionState]},{" "}
+            {speakerPositionLabels[experience.speakerPositionState]}
+          </button>
+        </article>
+      </div>
+    );
+  }
+
+  function renderListeningScreen() {
+    return (
+      <section
+        key="listening"
+        className="experience-screen"
+        aria-labelledby="comparison-heading"
+      >
+        <p className="step-label">A / B listening comparison</p>
+        <h2
+          id="comparison-heading"
+          ref={screenHeadingRef}
+          className="screen-heading"
+          tabIndex={-1}
+        >
+          Compare the same family moment
+        </h2>
+        <p className="same-source-line">Same family scene · same timeline</p>
+        <p className="screen-introduction">
+          A is the source reference. B is the illustrative profile result; the
+          support choice applies only to B.
         </p>
 
         <fieldset
           className="support-selector"
           disabled={!experience.comparisonPlan || controlsLocked}
         >
-          <legend>Illustrative support state</legend>
+          <legend>Illustrative support for B</legend>
           <div className="support-options">
             {(
               [
@@ -619,213 +821,223 @@ export default function HomePage() {
           </div>
         </fieldset>
         <p className="state-line">{visible.support}</p>
-
-        <fieldset
-          className="intervention-selector"
-          disabled={
-            !experience.confirmedProfile ||
-            experience.source.status !== "ready" ||
-            controlsLocked
-          }
-        >
-          <legend>Illustrative environmental intervention</legend>
-          <div className="intervention-options">
-            {(["tv-on", "tv-off"] as const).map((interventionState) => (
-              <label key={interventionState}>
-                <input
-                  type="radio"
-                  name="intervention-state"
-                  value={interventionState}
-                  checked={
-                    experience.interventionState === interventionState
-                  }
-                  onChange={() =>
-                    dispatch({
-                      type: "intervention-state-changed",
-                      interventionState,
-                    })
-                  }
-                />
-                <span>{interventionLabels[interventionState]}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <p className="state-line">{visible.intervention}</p>
-        <p>{visible.interventionSummary}</p>
-        <p>
-          TV-off is an illustrative environmental comparison, not a medical
-          recommendation or a guaranteed outcome. This summary is deterministic
-          and does not come from a live model.
+        <p className="acknowledgement-confirmed">
+          Low-volume acknowledgement confirmed for this comparison.
         </p>
 
-        <fieldset
-          className="speaker-position-selector"
-          disabled={
-            !experience.confirmedProfile ||
-            experience.source.status !== "ready" ||
-            controlsLocked
-          }
-        >
-          <legend>Illustrative important-speaker position</legend>
-          <div className="speaker-position-options">
-            {(
-              ["original-position", "closer-in-front"] as const
-            ).map((speakerPositionState) => (
-              <label key={speakerPositionState}>
-                <input
-                  type="radio"
-                  name="speaker-position-state"
-                  value={speakerPositionState}
-                  checked={
-                    experience.speakerPositionState === speakerPositionState
-                  }
-                  onChange={() =>
-                    dispatch({
-                      type: "speaker-position-changed",
-                      speakerPositionState,
-                    })
-                  }
-                />
-                <span>{speakerPositionLabels[speakerPositionState]}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <p className="state-line">{visible.speakerPosition}</p>
-        <p>{visible.speakerPositionSummary}</p>
-        <p>
-          This is an illustrative spatial comparison, not a medical
-          recommendation or a guaranteed communication outcome.
+        {playbackButtons()}
+
+        <p className="playback-state" role="status" aria-live="polite">
+          {transportStatus}
         </p>
+        {sceneTranscriptDetail()}
 
-        {selectedTransformation ? (
-          <div className="table-scroll proof-table">
-            <table>
-              <caption>
-                {supportLabels[experience.supportMode]} profile-derived plan
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Frequency</th>
-                  <th scope="col">Right</th>
-                  <th scope="col">Left</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedTransformation.leftFilters.map(
-                  (leftFilter, index) => {
-                    const rightFilter = selectedTransformation.rightFilters[index];
-
-                    return (
-                      <tr key={leftFilter.frequencyHz}>
-                        <th scope="row">{leftFilter.frequencyHz} Hz</th>
-                        <td>{rightFilter.gainDb.toFixed(1)} dB</td>
-                        <td>{leftFilter.gainDb.toFixed(1)} dB</td>
-                      </tr>
-                    );
-                  },
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-
-        <label className="acknowledgement">
-          <input
-            type="checkbox"
-            checked={experience.lowVolumeAcknowledged}
-            disabled={controlsLocked}
-            onChange={(event) =>
-              dispatch({
-                type: "low-volume-acknowledgement-changed",
-                acknowledged: event.target.checked,
-              })
-            }
-          />
-          <span>
-            I have set my device to a low volume and understand that digital
-            validation cannot guarantee physical listening level.
-          </span>
-        </label>
-
-        <div className="button-row">
-          <button
-            type="button"
-            onClick={() => void play("reference")}
-            disabled={
-              !experience.comparisonPlan ||
-              experience.source.status !== "ready" ||
-              !experience.lowVolumeAcknowledged ||
-              controlsLocked
-            }
-          >
-            Play source reference —{" "}
-            {interventionLabels[experience.interventionState]},{" "}
-            {speakerPositionLabels[experience.speakerPositionState]}
-          </button>
-          <button
-            type="button"
-            onClick={() => void play("simulated")}
-            disabled={
-              !experience.comparisonPlan ||
-              experience.source.status !== "ready" ||
-              !experience.lowVolumeAcknowledged ||
-              controlsLocked
-            }
-          >
-            Play {supportLabels[experience.supportMode].toLowerCase()} result —{" "}
-            {interventionLabels[experience.interventionState]},{" "}
-            {speakerPositionLabels[experience.speakerPositionState]}
-          </button>
-          <button
-            className="stop-button"
-            type="button"
-            onClick={stopPlayback}
-            disabled={!isPlaying && !isRendering}
-          >
-            Stop immediately
-          </button>
-        </div>
-
-        <div className="state-panel" aria-live="polite" aria-atomic="true">
-          <h3>Current data-derived state</h3>
+        <details className="technical-detail">
+          <summary>Technical comparison details</summary>
           <ul>
             <li>{visible.profile}</li>
             <li>{visible.source}</li>
-            <li>{visible.support}</li>
-            <li>{visible.intervention}</li>
-            <li>{visible.interventionSummary}</li>
-            <li>{visible.speakerPosition}</li>
-            <li>{visible.speakerPositionSummary}</li>
             <li>{visible.reference}</li>
             <li>{visible.simulated}</li>
-            <li>{visible.playback}</li>
-            <li>{visible.model}</li>
           </ul>
-        </div>
+          {selectedTransformation ? (
+            <div className="table-scroll proof-table">
+              <table>
+                <caption>
+                  {supportLabels[experience.supportMode]} profile-derived plan
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Frequency</th>
+                    <th scope="col">Right</th>
+                    <th scope="col">Left</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedTransformation.leftFilters.map(
+                    (leftFilter, index) => {
+                      const rightFilter =
+                        selectedTransformation.rightFilters[index];
+
+                      return (
+                        <tr key={leftFilter.frequencyHz}>
+                          <th scope="row">{leftFilter.frequencyHz} Hz</th>
+                          <td>{rightFilter.gainDb.toFixed(1)} dB</td>
+                          <td>{leftFilter.gainDb.toFixed(1)} dB</td>
+                        </tr>
+                      );
+                    },
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </details>
 
         <p className="limitation">
-          This is an illustrative, non-clinical spectral transformation. It is
-          not a hearing test, diagnosis, treatment, prescription, or exact model
-          of any person&apos;s hearing. Support is not a hearing-aid fitting,
-          prescription, or prediction of individual benefit. Start at low volume.
+          This spectral transformation and every support state are illustrative
+          and non-clinical. They are not a hearing-aid fitting, prescription, or
+          prediction of individual benefit.
         </p>
       </section>
+    );
+  }
 
-      <section aria-labelledby="live-explanation-heading">
-        <p className="step-label">Step 4</p>
-        <h2 id="live-explanation-heading">Explain the current result</h2>
-        <p>
+  function renderInterventionsScreen() {
+    return (
+      <section
+        key="interventions"
+        className="experience-screen"
+        aria-labelledby="interventions-heading"
+      >
+        <p className="step-label">Communication conditions</p>
+        <h2
+          id="interventions-heading"
+          ref={screenHeadingRef}
+          className="screen-heading"
+          tabIndex={-1}
+        >
+          Change the listening conditions
+        </h2>
+        <p className="screen-introduction">
+          Keep the same source and adjust only the television contribution or
+          the important speaker&apos;s position.
+        </p>
+        <p className="support-context">
+          Current B support:{" "}
+          <strong>{supportLabels[experience.supportMode]}</strong>
+        </p>
+
+        <div className="intervention-grid">
+          <div>
+            <fieldset
+              className="intervention-selector"
+              disabled={
+                !experience.confirmedProfile ||
+                experience.source.status !== "ready" ||
+                controlsLocked
+              }
+            >
+              <legend>Television contribution</legend>
+              <div className="intervention-options">
+                {(["tv-on", "tv-off"] as const).map((interventionState) => (
+                  <label key={interventionState}>
+                    <input
+                      type="radio"
+                      name="intervention-state"
+                      value={interventionState}
+                      checked={
+                        experience.interventionState === interventionState
+                      }
+                      onChange={() =>
+                        dispatch({
+                          type: "intervention-state-changed",
+                          interventionState,
+                        })
+                      }
+                    />
+                    <span>{interventionLabels[interventionState]}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <p className="state-line">{visible.intervention}</p>
+            <p>{visible.interventionSummary}</p>
+          </div>
+
+          <div>
+            <fieldset
+              className="speaker-position-selector"
+              disabled={
+                !experience.confirmedProfile ||
+                experience.source.status !== "ready" ||
+                controlsLocked
+              }
+            >
+              <legend>Important-speaker position</legend>
+              <div className="speaker-position-options">
+                {(
+                  ["original-position", "closer-in-front"] as const
+                ).map((speakerPositionState) => (
+                  <label key={speakerPositionState}>
+                    <input
+                      type="radio"
+                      name="speaker-position-state"
+                      value={speakerPositionState}
+                      checked={
+                        experience.speakerPositionState === speakerPositionState
+                      }
+                      onChange={() =>
+                        dispatch({
+                          type: "speaker-position-changed",
+                          speakerPositionState,
+                        })
+                      }
+                    />
+                    <span>{speakerPositionLabels[speakerPositionState]}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <p className="state-line">{visible.speakerPosition}</p>
+            <p>{visible.speakerPositionSummary}</p>
+          </div>
+        </div>
+
+        {playbackButtons()}
+        <p className="playback-state" role="status" aria-live="polite">
+          {transportStatus}
+        </p>
+        <p className="limitation">
+          TV-off and speaker position are deterministic illustrative
+          comparisons—not medical recommendations or guaranteed communication
+          outcomes.
+        </p>
+      </section>
+    );
+  }
+
+  function renderExplanationScreen() {
+    return (
+      <section
+        key="explanation"
+        className="experience-screen"
+        aria-labelledby="live-explanation-heading"
+      >
+        <p className="step-label">Grounded explanation</p>
+        <h2
+          id="live-explanation-heading"
+          ref={screenHeadingRef}
+          className="screen-heading"
+          tabIndex={-1}
+        >
+          Explain the current result
+        </h2>
+        <p className="screen-introduction">
           Generate one fresh, bounded explanation for the current illustrative
-          profile, support state, TV intervention and important-speaker
-          position. No raw audiogram values are sent to the model.
+          result. No raw audiogram values are sent to the model.
         </p>
-        <p>
-          The explanation is not a diagnosis, prescription or guarantee of
-          individual perception. Deterministic audio remains available if GPT is
-          unavailable.
-        </p>
+
+        <dl className="context-summary">
+          <div>
+            <dt>Profile</dt>
+            <dd>{visible.profile}</dd>
+          </div>
+          <div>
+            <dt>Support</dt>
+            <dd>{supportLabels[experience.supportMode]}</dd>
+          </div>
+          <div>
+            <dt>Television</dt>
+            <dd>{interventionLabels[experience.interventionState]}</dd>
+          </div>
+          <div>
+            <dt>Important speaker</dt>
+            <dd>
+              {speakerPositionLabels[experience.speakerPositionState]}
+            </dd>
+          </div>
+        </dl>
 
         <button
           type="button"
@@ -865,14 +1077,35 @@ export default function HomePage() {
             <p>{experience.modelState.result.message}</p>
           </div>
         ) : null}
-      </section>
 
-      <section aria-labelledby="completion-heading">
-        <p className="step-label">Step 5</p>
-        <h2 id="completion-heading">Complete this comparison</h2>
-        <p>
-          Completion is available only for the current validated deterministic
-          result after one explicit live-explanation attempt has finished.
+        <p className="limitation">
+          The explanation is not a diagnosis, prescription, or guarantee of
+          individual perception. The deterministic comparison remains available
+          when GPT is unavailable.
+        </p>
+      </section>
+    );
+  }
+
+  function renderCompletionScreen() {
+    return (
+      <section
+        key="completion"
+        className="experience-screen"
+        aria-labelledby="completion-heading"
+      >
+        <p className="step-label">Your comparison</p>
+        <h2
+          id="completion-heading"
+          ref={screenHeadingRef}
+          className="screen-heading"
+          tabIndex={-1}
+        >
+          Complete this comparison
+        </h2>
+        <p className="screen-introduction">
+          Complete the current validated deterministic result and keep a
+          sanitized proof of the illustrative run.
         </p>
         <button
           type="button"
@@ -949,11 +1182,142 @@ export default function HomePage() {
           </div>
         ) : (
           <p className="state-line">
-            Completion state: in progress. Finish the current deterministic
-            result and one explanation attempt before completing.
+            Completion state: ready. Confirm to create the terminal summary.
           </p>
         )}
       </section>
+    );
+  }
+
+  function renderActiveScreen() {
+    switch (activeScreen) {
+      case "profile":
+        return renderProfileScreen();
+      case "scene":
+        return renderSceneScreen();
+      case "listening":
+        return renderListeningScreen();
+      case "interventions":
+        return renderInterventionsScreen();
+      case "explanation":
+        return renderExplanationScreen();
+      case "completion":
+        return renderCompletionScreen();
+      case "welcome":
+        return null;
+    }
+  }
+
+  const showPersistentStop =
+    activeScreen === "listening" ||
+    activeScreen === "interventions" ||
+    activeScreen === "explanation";
+  const activeStep =
+    activeScreen === "welcome"
+      ? null
+      : experienceScreenOrder.indexOf(activeScreen) + 1;
+
+  return (
+    <main className="guided-shell">
+      {activeScreen === "welcome" ? (
+        <section
+          key="welcome"
+          className="welcome-screen experience-screen"
+          aria-labelledby="auralis-heading"
+        >
+          <div className="welcome-copy">
+            <p className="eyebrow">A guided listening comparison</p>
+            <h1
+              id="auralis-heading"
+              ref={screenHeadingRef}
+              className="screen-heading"
+              tabIndex={-1}
+            >
+              Auralis
+            </h1>
+            <p className="tagline">See what hearing sounds like.</p>
+            <p className="welcome-statement">
+              One family scene. Different listening conditions.
+            </p>
+            <p>
+              Compare a source reference with an illustrative result shaped by
+              a confirmed hearing profile and communication conditions.
+            </p>
+            <button type="button" onClick={() => navigateTo("profile")}>
+              Start the comparison
+            </button>
+            <p className="limitation">
+              This is an illustrative, non-clinical experience—not a diagnosis,
+              hearing-aid fitting, prescription, or prediction of individual
+              perception.
+            </p>
+            <details className="how-it-works">
+              <summary>How it works</summary>
+              <p>
+                Confirm a profile, load one validated family scene, compare A
+                and B, explore two communication conditions, then review and
+                export a sanitized summary.
+              </p>
+            </details>
+          </div>
+          <div className="welcome-principle" aria-hidden="true">
+            <span>Same scene</span>
+            <span>Same timeline</span>
+            <span>Different listening conditions</span>
+          </div>
+        </section>
+      ) : (
+        <>
+          <header className="experience-header">
+            <h1 className="app-wordmark">Auralis</h1>
+            <p
+              className="progress-label"
+              aria-label={`Step ${activeStep} of 6: ${screenLabels[activeScreen]}`}
+              aria-current="step"
+            >
+              <span>
+                {activeStep} of 6
+              </span>
+              <strong>{screenLabels[activeScreen]}</strong>
+            </p>
+            {showPersistentStop ? (
+              <div className="persistent-stop-slot">
+                <button
+                  className="stop-button"
+                  type="button"
+                  onClick={stopPlayback}
+                  disabled={!isPlaying && !isRendering}
+                >
+                  Stop immediately
+                </button>
+              </div>
+            ) : (
+              <div className="header-balance" aria-hidden="true" />
+            )}
+          </header>
+
+          <div className="screen-stage">{renderActiveScreen()}</div>
+
+          <nav className="screen-navigation" aria-label="Experience navigation">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={goBack}
+            >
+              Back
+            </button>
+            {activeScreen !== "completion" ? (
+              <button
+                type="button"
+                onClick={continueExperience}
+                disabled={!canContinueFrom(activeScreen)}
+              >
+                Continue to {screenLabels[nextScreen[activeScreen]]}
+              </button>
+            ) : null}
+          </nav>
+        </>
+      )}
     </main>
   );
 }
