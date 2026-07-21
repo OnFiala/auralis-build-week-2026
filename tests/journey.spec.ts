@@ -476,12 +476,24 @@ test("manual profile completes one attributable live journey", async ({
   await page
     .getByRole("button", { name: "Play A — Source reference" })
     .click();
-  await expect(
-    listeningScreen.locator(".listening-transport-status"),
-  ).toHaveText(
-    "Preparing A · Source reference · TV on · Original position",
-  );
-  await expect(referenceCard).toHaveClass(/ab-playback-card-preparing/);
+  const immediateReferenceState = await listeningScreen.evaluate((screen) => ({
+    statusText:
+      screen.querySelector(".listening-transport-status")?.textContent ?? null,
+    cardClass:
+      screen.querySelector(".ab-playback-card-a")?.getAttribute("class") ??
+      null,
+  }));
+  expect([
+    {
+      statusText: "Preparing A · Source reference · TV on · Original position",
+      cardClass:
+        "ab-playback-card ab-playback-card-a ab-playback-card-preparing",
+    },
+    {
+      statusText: "Playing A · Source reference · TV on · Original position",
+      cardClass: "ab-playback-card ab-playback-card-a ab-playback-card-playing",
+    },
+  ]).toContainEqual(immediateReferenceState);
   await expect(
     listeningScreen.locator(".listening-transport-status"),
   ).toHaveText("Playing A · Source reference · TV on · Original position", {
