@@ -418,11 +418,12 @@ test("manual profile completes one attributable live journey", async ({
         resultIdentity: request.resultIdentity,
         model: MODEL_ID,
         responseId: "journey-live-response",
-        sceneFraming: "A synthetic family dinner is in progress.",
+        sceneFraming:
+          "At the family dinner, one person is the important speaker while another conversation, the television, and occasional kitchen or room sounds compete for attention. The manually entered illustrative profile changes the listening perspective, so in this scene some softer speech details may be less easy to separate from everything happening around the table.",
         audibleChange:
-          "Bilateral support is active, TV off removes the television contribution, and Closer, in front changes only the focused speaker position.",
+          "In this illustration, Bilateral support partially changes the listening perspective for both sides; it may bring some speech detail forward without recreating anyone’s hearing or promising the same effect for every person. With TV off, the television contribution is removed, so one source of competition is no longer present while the overlapping voices and room sounds continue. With the important speaker Closer, in front, that speaker’s contribution is repositioned according to the deterministic comparison, which can make the voice easier to pick out in this particular result. These changes work together in B, but each one addresses a different part of the listening situation.",
         unchanged:
-          "The same source identity, timeline, overlapping speech, and room events remain in use.",
+          "The underlying recorded family moment and its timeline stay the same, so the words, overlapping conversation, and sparse kitchen or room events occur at the same points as before. Keeping those elements in place means the comparison changes only the selected support and communication conditions, making it easier to connect any noticed difference to those choices rather than to a different scene.",
         limitation: "Individual perception can differ.",
       },
     });
@@ -737,14 +738,29 @@ test("manual profile completes one attributable live journey", async ({
   await expect(
     liveExplanation.getByText("Live GPT", { exact: true }),
   ).toBeVisible();
+  await expect(
+    liveExplanation.getByRole("heading", {
+      name: "What this comparison means",
+    }),
+  ).toBeVisible();
+  for (const label of [
+    "What was happening",
+    "What changed in this comparison",
+    "What stayed the same",
+    "How to interpret this",
+  ]) {
+    await expect(
+      liveExplanation.getByText(label, { exact: true }),
+    ).toBeVisible();
+  }
   await expect(liveExplanation).toContainText(
-    "A synthetic family dinner is in progress.",
+    "At the family dinner, one person is the important speaker while another conversation, the television, and occasional kitchen or room sounds compete for attention.",
   );
   await expect(liveExplanation).toContainText(
-    "Bilateral support is active, TV off removes the television contribution, and Closer, in front changes only the focused speaker position.",
+    "In this illustration, Bilateral support partially changes the listening perspective for both sides",
   );
   await expect(liveExplanation).toContainText(
-    "The same source identity, timeline, overlapping speech, and room events remain in use.",
+    "The underlying recorded family moment and its timeline stay the same",
   );
   await expect(liveExplanation).toContainText(
     "Individual perception can differ.",

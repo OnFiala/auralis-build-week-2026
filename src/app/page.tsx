@@ -2105,14 +2105,14 @@ export default function HomePage() {
             {experience.modelState.status === "live" ? (
               <div className="model-result model-result-live">
                 <p className="model-badge">Live GPT</p>
-                <h4>Current grounded explanation</h4>
+                <h4>What this comparison means</h4>
                 <dl className="model-result-structure">
                   <div>
-                    <dt>Scene context</dt>
+                    <dt>What was happening</dt>
                     <dd>{experience.modelState.result.sceneFraming}</dd>
                   </div>
                   <div>
-                    <dt>What changed</dt>
+                    <dt>What changed in this comparison</dt>
                     <dd>{experience.modelState.result.audibleChange}</dd>
                   </div>
                   <div>
@@ -2120,7 +2120,7 @@ export default function HomePage() {
                     <dd>{experience.modelState.result.unchanged}</dd>
                   </div>
                   <div>
-                    <dt>Limit</dt>
+                    <dt>How to interpret this</dt>
                     <dd>{experience.modelState.result.limitation}</dd>
                   </div>
                 </dl>
@@ -2379,6 +2379,11 @@ export default function HomePage() {
             <button type="button" onClick={() => navigateTo("profile")}>
               Start the comparison
             </button>
+            <p className="welcome-headphone-tip">
+              Best experienced with headphones — AirPods Pro, AirPods Max, or
+              any comfortable stereo headphones. Set a comfortable listening
+              level before you begin.
+            </p>
             <p className="limitation">
               Built to help families understand an everyday listening
               experience—not to diagnose hearing or recommend treatment.

@@ -49,6 +49,12 @@ test("public Auralis welcome reaches its trusted health boundary", async ({ page
     ),
   ).toBeVisible();
   await expect(
+    page.getByText(
+      "Best experienced with headphones — AirPods Pro, AirPods Max, or any comfortable stereo headphones. Set a comfortable listening level before you begin.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
     page.getByRole("button", { name: "Check system status" }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Start the comparison" }).click();

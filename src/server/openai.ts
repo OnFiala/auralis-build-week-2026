@@ -12,7 +12,7 @@ import type {
 } from "./model";
 
 const PROVIDER_TIMEOUT_MS = 15_000;
-const MAX_OUTPUT_TOKENS = 500;
+const MAX_OUTPUT_TOKENS = 1_200;
 
 function containsRefusal(
   output: Awaited<ReturnType<OpenAI["responses"]["parse"]>>["output"],
@@ -51,6 +51,7 @@ export class OpenAIExplanationProvider implements ExplanationProvider {
         instructions: input.instructions,
         input: input.input,
         text: {
+          verbosity: "high",
           format: zodTextFormat(
             providerExplanationSchema,
             "auralis_explanation",

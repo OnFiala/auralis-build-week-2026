@@ -64,11 +64,11 @@ const providerOutput: ProviderExplanation = {
   interventionState: request.interventionState,
   speakerPositionState: request.speakerPositionState,
   sceneFraming:
-    "A synthetic family conversation continues around a shared dinner table.",
+    "At the family dinner, one person is the important speaker while another conversation, the television, and occasional kitchen or room sounds compete for attention. The supplied illustrative profile has a higher-frequency emphasis with the left side more attenuated, so in this scene some softer speech details may be less easy to separate from everything happening around the table.",
   audibleChange:
-    "Left-ear support is active, TV off removes the television contribution, and Closer, in front places the important speaker centrally.",
+    "In this illustration, Left-ear support partially changes the listening perspective for the left side; it may bring some speech detail forward without recreating anyone’s hearing or promising the same effect for every person. With TV off, the television contribution is removed, so one source of competition is no longer present while the overlapping voices and room sounds continue. With the important speaker Closer, in front, that speaker’s contribution is repositioned according to the deterministic comparison, which can make the voice easier to pick out in this particular result. These changes work together in B, but each one addresses a different part of the listening situation.",
   unchanged:
-    "Overlapping speech, sparse room events, source identity and timing remain unchanged.",
+    "The underlying recorded family moment and its timeline stay the same, so the words, overlapping conversation, and sparse kitchen or room events occur at the same points as before. Keeping those elements in place means the comparison changes only the selected support and communication conditions, making it easier to connect any noticed difference to those choices rather than to a different scene.",
   limitation: "Individual perception can differ.",
 };
 
@@ -175,6 +175,21 @@ describe("server model application", () => {
     expect(calls.input?.input).toContain(
       '"speakerPositionState":"closer-in-front"',
     );
+    expect(calls.input?.instructions).toContain(
+      "Write for a non-technical family member in warm, natural, plain English.",
+    );
+    expect(calls.input?.instructions).toContain(
+      "Across those three explanatory fields, target approximately 170–230 words.",
+    );
+    expect(calls.input?.instructions).toContain(
+      "For sceneFraming, use 2–3 sentences",
+    );
+    expect(calls.input?.instructions).toContain(
+      "For audibleChange, use 3–5 sentences",
+    );
+    expect(calls.input?.instructions).toContain(
+      "For unchanged, use 2–3 sentences",
+    );
   });
 
   it.each([
@@ -211,6 +226,26 @@ describe("server model application", () => {
     expect(calls.count).toBe(1);
   });
 
+  it("degrades non-empty but materially terse prose as malformed output", async () => {
+    const result = await explainCurrentExperience(
+      request,
+      providerReturning({
+        status: "success",
+        model: MODEL_ID,
+        responseId: "resp-1",
+        output: {
+          ...providerOutput,
+          sceneFraming: "A family dinner continues.",
+        },
+      }),
+    );
+
+    expect(result).toMatchObject({
+      status: "degraded",
+      reason: "malformed-output",
+    });
+  });
+
   it("degrades malformed, mismatched and claim-violating outputs", async () => {
     const cases = [
       {
@@ -231,8 +266,7 @@ describe("server model application", () => {
       {
         output: {
           ...providerOutput,
-          audibleChange:
-            "Left-ear support with TV off and Closer, in front will improve your hearing.",
+          audibleChange: `${providerOutput.audibleChange} It will improve your hearing.`,
         },
         reason: "claim-violation",
       },

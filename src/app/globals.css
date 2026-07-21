@@ -581,8 +581,9 @@ button:disabled {
 .model-result-degraded p {
   margin-top: 0.25rem;
   color: #36544d;
-  font-size: 0.8rem;
-  line-height: 1.5;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
 }
 
 .model-result-degraded .degraded-core-message {
@@ -962,6 +963,18 @@ button:disabled {
   font-weight: 750;
   line-height: 1.25;
   letter-spacing: -0.025em;
+}
+
+.welcome-headphone-tip {
+  max-width: 40rem;
+  margin: 0.7rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-left: 0.22rem solid #b46f45;
+  border-radius: 0 0.65rem 0.65rem 0;
+  background: #f7ede3;
+  color: #274e66;
+  font-size: 0.82rem;
+  line-height: 1.55;
 }
 
 .welcome-visual {

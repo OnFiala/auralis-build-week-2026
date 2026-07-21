@@ -102,6 +102,13 @@ export type ModelExplanationRequest = z.infer<
   typeof modelExplanationRequestSchema
 >;
 
+const explanationTextSchema = {
+  sceneFraming: z.string().trim().min(140).max(650),
+  audibleChange: z.string().trim().min(260).max(950),
+  unchanged: z.string().trim().min(140).max(650),
+  limitation: z.literal("Individual perception can differ."),
+} as const;
+
 export const providerExplanationSchema = z
   .object({
     runId: boundedIdSchema,
@@ -114,10 +121,7 @@ export const providerExplanationSchema = z
     supportMode: supportModeSchema,
     interventionState: interventionStateSchema,
     speakerPositionState: speakerPositionStateSchema,
-    sceneFraming: z.string().trim().min(1).max(320),
-    audibleChange: z.string().trim().min(1).max(320),
-    unchanged: z.string().trim().min(1).max(320),
-    limitation: z.string().trim().min(1).max(220),
+    ...explanationTextSchema,
   })
   .strict();
 
@@ -139,10 +143,7 @@ export const liveModelExplanationSchema = z
     ...responseGroundingSchema,
     model: z.literal(MODEL_ID),
     responseId: boundedIdSchema,
-    sceneFraming: z.string().trim().min(1).max(320),
-    audibleChange: z.string().trim().min(1).max(320),
-    unchanged: z.string().trim().min(1).max(320),
-    limitation: z.string().trim().min(1).max(220),
+    ...explanationTextSchema,
   })
   .strict();
 

@@ -86,13 +86,21 @@ function providerInputFor(
 
   const instructions = [
     "Return only the strict structured explanation object.",
-    "Frame one original synthetic family-dinner scene for the current run.",
-    "Explain only the supplied verified deterministic result.",
-    `The audibleChange field must explicitly use the phrases "${supportLabel}", "${interventionLabel}", and "${speakerPositionLabel}".`,
-    "The unchanged field may describe only the competing stems, source identity, and timeline; do not claim that the focused speaker position or gain remained unchanged.",
-    "Do not diagnose, prescribe, promise benefit, claim clinical accuracy, or infer raw hearing thresholds.",
-    "Do not suggest a product, treatment, device, or action.",
-    "Keep every field concise, factual, illustrative, and non-clinical.",
+    "Write for a non-technical family member in warm, natural, plain English.",
+    "Make sceneFraming, audibleChange, and unchanged read as one coherent explanation of the supplied verified deterministic result, not as disconnected technical fragments.",
+    "Across those three explanatory fields, target approximately 170–230 words.",
+    "Use complete sentences, concrete language, and calm causal transitions; do not use Markdown, bullets, headings, fragments, or internal implementation jargon inside the fields.",
+    "For sceneFraming, use 2–3 sentences to explain the family-dinner moment, the important speaker, and the competing conversation, television, and room sounds.",
+    "Connect that situation carefully to the supplied illustrative profile pattern without interpreting or exposing raw hearing thresholds.",
+    `For audibleChange, use 3–5 sentences and explicitly include the exact phrases "${supportLabel}", "${interventionLabel}", and "${speakerPositionLabel}".`,
+    "Explain in causal order what the current illustrative B result is doing now, why a listener may notice a difference, and separately what support, the television intervention, and the speaker-position intervention change.",
+    'Use cautious phrases such as "may", "can", and "in this illustration"; do not promise benefit or say every person would hear the same effect.',
+    "For unchanged, use 2–3 sentences to explain in everyday language that the underlying recorded family moment and timeline remain the same, which competing voices and room events remain present or unchanged according to the supplied facts, and why that makes the comparison easier to interpret.",
+    "Do not claim that the focused-speaker position or gain remained unchanged when it changed.",
+    "Do not diagnose, prescribe, recommend treatment or a hearing device, predict clinical benefit, claim clinical accuracy, or infer raw hearing thresholds.",
+    "Do not invent dialogue, family relationships, exact distances, acoustic measurements, frequencies, gains, device behavior, or events not present in the supplied grounding.",
+    "Do not use internal terms such as schema, grounding revision, source identity, result identity, stems, transformation object, or provider.",
+    "Do not claim that GPT created or altered the deterministic audio or that the illustration exactly reproduces an individual person’s hearing.",
     'Use exactly "Individual perception can differ." in the limitation field.',
   ].join(" ");
 
