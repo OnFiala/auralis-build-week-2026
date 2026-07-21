@@ -41,6 +41,7 @@ import {
   type EarThresholdDraft,
   type EarThresholds,
   type FrequencyKey,
+  type PredefinedProfileId,
   type ProfileEntryOption,
 } from "../core/profile";
 
@@ -133,6 +134,18 @@ const speakerPositionLabels: Record<
   "original-position": "Original position",
   "closer-in-front": "Closer, in front",
 };
+
+const profileEverydayDescriptions: Record<PredefinedProfileId, string> = {
+  "high-frequency-hearing-loss":
+    "Quieter high-pitched detail may be easier to miss, especially consonants and distant speech.",
+  "flat-hearing-loss":
+    "A broad range of sounds is softened, so voices may feel quieter overall.",
+  "asymmetric-hearing-loss":
+    "The two ears receive different detail, which can make busy conversations harder to follow.",
+};
+
+const manualProfileEverydayDescription =
+  "Enter separate right- and left-ear values to explore a specific illustrative pattern.";
 
 const sceneSources = [
   {
@@ -870,12 +883,21 @@ export default function HomePage() {
           className="screen-heading"
           tabIndex={-1}
         >
-          Choose a hearing profile
+          Choose a listening profile
         </h2>
-        <p className="screen-introduction">
-          Choose one fixed synthetic example or enter exact values for each ear.
-          Every option uses the same comparison pipeline.
-        </p>
+        <div className="profile-guidance">
+          <p className="screen-introduction">
+            An audiogram is a map of the quietest sounds a person can hear at
+            different pitches. It does not tell the whole story, but it can help
+            illustrate why parts of speech, distant voices, or quieter sounds may
+            become harder to catch.
+          </p>
+          <p>
+            Choosing a profile changes the listening perspective used next. You
+            will compare it with the original scene—you are not taking a hearing
+            test or receiving a diagnosis.
+          </p>
+        </div>
 
         <div className="profile-workspace">
           <div className="profile-entry-column">
@@ -889,9 +911,16 @@ export default function HomePage() {
                       name="profile-entry"
                       value={profile.id}
                       checked={experience.selectedProfileEntry === profile.id}
+                      aria-label={profile.displayName}
+                      aria-describedby={`profile-${profile.id}-description`}
                       onChange={() => selectProfileEntry(profile.id)}
                     />
-                    <span>{profile.displayName}</span>
+                    <span className="profile-option-copy">
+                      <strong>{profile.displayName}</strong>
+                      <small id={`profile-${profile.id}-description`}>
+                        {profileEverydayDescriptions[profile.id]}
+                      </small>
+                    </span>
                   </label>
                 ))}
                 <label>
@@ -900,14 +929,21 @@ export default function HomePage() {
                     name="profile-entry"
                     value="manual"
                     checked={experience.selectedProfileEntry === "manual"}
+                    aria-label={MANUAL_PROFILE_ENTRY_LABEL}
+                    aria-describedby="profile-manual-description"
                     onChange={() => selectProfileEntry("manual")}
                   />
-                  <span>{MANUAL_PROFILE_ENTRY_LABEL}</span>
+                  <span className="profile-option-copy">
+                    <strong>{MANUAL_PROFILE_ENTRY_LABEL}</strong>
+                    <small id="profile-manual-description">
+                      {manualProfileEverydayDescription}
+                    </small>
+                  </span>
                 </label>
               </div>
             </fieldset>
             <p className="profile-selection-note">
-              Three profiles are fixed synthetic examples. Manual entry remains
+              Three options are fixed synthetic examples. Manual entry stays
               exact and separate for the right and left ears.
             </p>
           </div>
@@ -925,7 +961,10 @@ export default function HomePage() {
                   Review the exact fixed values before confirming this synthetic
                   illustrative profile.
                 </p>
-                <details className="profile-values-detail" open>
+                <details
+                  key={selectedPredefinedProfile.id}
+                  className="profile-values-detail"
+                >
                   <summary>Exact threshold values</summary>
                   <div className="table-scroll profile-table-shell">
                     <table className="profile-threshold-table">
@@ -986,56 +1025,59 @@ export default function HomePage() {
                   values directly and does not smooth or approximate them.
                 </p>
 
-                <div className="table-scroll profile-table-shell">
-                  <table className="profile-threshold-table">
-                    <caption>
-                      {MANUAL_PROFILE_ENTRY_LABEL}: exact current thresholds
-                    </caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Frequency</th>
-                        <th scope="col">Right ear (dB HL)</th>
-                        <th scope="col">Left ear (dB HL)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {FREQUENCY_GRID_HZ.map((frequency) => {
-                        const key = frequencyKey(frequency);
+                <details key="manual" className="profile-values-detail">
+                  <summary>Exact threshold values</summary>
+                  <div className="table-scroll profile-table-shell">
+                    <table className="profile-threshold-table">
+                      <caption>
+                        {MANUAL_PROFILE_ENTRY_LABEL}: exact current thresholds
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Frequency</th>
+                          <th scope="col">Right ear (dB HL)</th>
+                          <th scope="col">Left ear (dB HL)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {FREQUENCY_GRID_HZ.map((frequency) => {
+                          const key = frequencyKey(frequency);
 
-                        return (
-                          <tr key={frequency}>
-                            <th scope="row">
-                              {frequency >= 1000
-                                ? `${frequency / 1000} kHz`
-                                : `${frequency} Hz`}
-                            </th>
-                            {(["right", "left"] as const).map((ear) => (
-                              <td key={ear}>
-                                <input
-                                  aria-label={`${ear} ear at ${frequency} Hz`}
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="5"
-                                  inputMode="numeric"
-                                  value={experience.manualDraft[ear][key]}
-                                  disabled={controlsLocked}
-                                  onChange={(event) =>
-                                    updateManualValue(
-                                      ear,
-                                      frequency,
-                                      event.target.value,
-                                    )
-                                  }
-                                />
-                              </td>
-                            ))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                          return (
+                            <tr key={frequency}>
+                              <th scope="row">
+                                {frequency >= 1000
+                                  ? `${frequency / 1000} kHz`
+                                  : `${frequency} Hz`}
+                              </th>
+                              {(["right", "left"] as const).map((ear) => (
+                                <td key={ear}>
+                                  <input
+                                    aria-label={`${ear} ear at ${frequency} Hz`}
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="5"
+                                    inputMode="numeric"
+                                    value={experience.manualDraft[ear][key]}
+                                    disabled={controlsLocked}
+                                    onChange={(event) =>
+                                      updateManualValue(
+                                        ear,
+                                        frequency,
+                                        event.target.value,
+                                      )
+                                    }
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
 
                 {visible.lastEdit ? (
                   <p className="state-line">{visible.lastEdit}</p>
@@ -1082,11 +1124,17 @@ export default function HomePage() {
           className="screen-heading"
           tabIndex={-1}
         >
-          Meet the family scene
+          Step into an everyday family moment
         </h2>
         <p className="screen-introduction">
-          One 64-second synthetic family scene · four synchronized sources ·
-          the same timeline throughout.
+          You are joining a familiar conversation with more than one voice, a
+          little distance, and some background sound. Listening difficulty is
+          often not about volume alone—it can also be about finding the voice
+          you want among everything else.
+        </p>
+        <p className="scene-continuity-line">
+          One validated 64-second scene · four synchronized audio sources · the
+          same timeline throughout
         </p>
 
         <div className="scene-setup-grid">
@@ -1143,8 +1191,8 @@ export default function HomePage() {
               <p className="scene-panel-kicker">1 · Load the scene</p>
               <h3>Prepare the validated audio</h3>
               <p>
-                Load the existing four synchronized stems. Audio will not start
-                on this screen.
+                Load the family moment now. Nothing plays until you choose a
+                listening control on the next screen.
               </p>
               <p
                 className={`scene-load-status scene-load-status-${experience.source.status}`}
@@ -1493,12 +1541,14 @@ export default function HomePage() {
           className="screen-heading"
           tabIndex={-1}
         >
-          Compare the same family moment
+          Compare the same moment
         </h2>
         <p className="same-source-line">Same family scene · same timeline</p>
         <p className="screen-introduction">
-          A is the validated source reference. B is the illustrative profile
-          result. Support changes only B.
+          Listen to the original scene first, then switch to the selected
+          listening profile. The speakers, words, and timing stay the same; only
+          the listening perspective changes, making the difference easier to
+          notice. Support changes only B.
         </p>
 
         <figure className="listening-scene-strip">
@@ -1646,10 +1696,12 @@ export default function HomePage() {
           className="screen-heading"
           tabIndex={-1}
         >
-          Change the communication conditions
+          Try small changes that can help
         </h2>
         <p className="screen-introduction">
-          Change one condition, then listen to the same validated scene again.
+          Simple communication choices can make a conversation easier to
+          follow. Try facing the listener, moving closer, or reducing competing
+          sound, then compare the same scene again.
         </p>
 
         <div className="intervention-control-grid">
@@ -1892,9 +1944,9 @@ export default function HomePage() {
           {interventionTransportStatus}
         </p>
         <p className="limitation intervention-limitation">
-          TV-off and speaker position are deterministic illustrative
-          comparisons—not medical recommendations or guaranteed communication
-          outcomes.
+          These changes do not restore hearing, but they can make the voice
+          easier to reach in a difficult moment. This remains a deterministic
+          illustration—not a medical recommendation or guaranteed outcome.
         </p>
       </section>
     );
@@ -1936,11 +1988,14 @@ export default function HomePage() {
           className="screen-heading"
           tabIndex={-1}
         >
-          Understand this result
+          Make sense of what changed
         </h2>
         <p className="screen-introduction">
-          Review the deterministic comparison first. A bounded GPT explanation
-          is optional and cannot change what you heard.
+          Auralis connects the comparison with a plain-language explanation.
+          Softer parts of speech may fade, distance can reduce clarity, and
+          background sound can compete with the voice you are trying to follow.
+          This remains an illustration, not a diagnosis or an exact prediction
+          of one person&apos;s experience.
         </p>
 
         <div className="explanation-layout">
@@ -2005,6 +2060,18 @@ export default function HomePage() {
               It explains the current result but cannot control audio, support,
               communication conditions, or safety.
             </p>
+
+            <aside className="gpt-demo-note" aria-labelledby="gpt-demo-note-heading">
+              <h4 id="gpt-demo-note-heading">About the GPT explanation</h4>
+              <p>
+                The recorded demo shows the GPT-powered explanation fully
+                enabled. This public production build does not include a shared
+                OpenAI API key. To generate the explanation live in a production
+                demo, configure your own API key securely on the server. This
+                keeps private credentials out of the browser and prevents public
+                use of the project key.
+              </p>
+            </aside>
 
             <button
               type="button"
@@ -2097,11 +2164,13 @@ export default function HomePage() {
           className="screen-heading"
           tabIndex={-1}
         >
-          Your Auralis comparison
+          Take the comparison into a real conversation
         </h2>
         <p className="screen-introduction">
-          A concise, attributable summary of the deterministic comparison you
-          completed.
+          The goal is not to reproduce someone&apos;s hearing perfectly. It is to
+          make an invisible difficulty easier to understand and talk about—and
+          to show how small choices in distance, attention, and background sound
+          can help.
         </p>
 
         {terminalCompletion ? (
@@ -2279,43 +2348,64 @@ export default function HomePage() {
         >
           <div className="welcome-copy">
             <p className="eyebrow">A guided listening comparison</p>
-            <h1
-              id="auralis-heading"
-              ref={screenHeadingRef}
-              className="screen-heading"
-              tabIndex={-1}
-            >
-              Auralis
-            </h1>
+            <div className="welcome-brand-lockup">
+              <Image
+                src="/media/auralis-mark.png"
+                width={256}
+                height={256}
+                sizes="64px"
+                className="welcome-mark"
+                alt=""
+                aria-hidden="true"
+              />
+              <h1
+                id="auralis-heading"
+                ref={screenHeadingRef}
+                className="screen-heading"
+                tabIndex={-1}
+              >
+                Auralis
+              </h1>
+            </div>
             <p className="tagline">See what hearing sounds like.</p>
             <p className="welcome-statement">
-              One family scene. Different listening conditions.
+              Auralis turns an audiogram into a guided listening comparison.
             </p>
             <p>
-              Compare a source reference with an illustrative result shaped by
-              a confirmed hearing profile and communication conditions.
+              Choose a hearing profile, step into an everyday family scene, and
+              hear how distance, background sound, and communication support can
+              change what reaches a listener.
             </p>
             <button type="button" onClick={() => navigateTo("profile")}>
               Start the comparison
             </button>
             <p className="limitation">
-              This is an illustrative, non-clinical experience—not a diagnosis,
-              hearing-aid fitting, prescription, or prediction of individual
-              perception.
+              Built to help families understand an everyday listening
+              experience—not to diagnose hearing or recommend treatment.
             </p>
             <details className="how-it-works">
               <summary>How it works</summary>
               <p>
-                Confirm a profile, load one validated family scene, compare A
-                and B, explore two communication conditions, then review and
-                export a sanitized summary.
+                Choose a profile, load one validated family moment, compare the
+                original with an illustrative result, try two communication
+                changes, then review a plain-language summary.
               </p>
             </details>
           </div>
-          <div className="welcome-principle" aria-hidden="true">
-            <span>Same scene</span>
-            <span>Same timeline</span>
-            <span>Different listening conditions</span>
+          <div className="welcome-visual" aria-hidden="true">
+            <Image
+              src="/media/auralis-family-scene.png"
+              alt=""
+              fill
+              sizes="(max-width: 44rem) calc(100vw - 3rem), 34rem"
+              className="welcome-family-image"
+            />
+            <div className="welcome-visual-scrim" />
+            <div className="welcome-principle">
+              <span>One family scene</span>
+              <span>Two listening perspectives</span>
+              <span>A clearer conversation</span>
+            </div>
           </div>
         </section>
       ) : (

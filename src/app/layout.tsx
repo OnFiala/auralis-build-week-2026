@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Auralis",
+  title: "Auralis — See what hearing sounds like",
   description:
-    "An illustrative, non-clinical deterministic Auralis hearing experience for OpenAI Build Week 2026.",
+    "A guided listening comparison that helps families explore how hearing profiles, distance, and background sound can shape an everyday conversation.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

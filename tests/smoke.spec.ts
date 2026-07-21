@@ -20,16 +20,32 @@ test("public Auralis welcome reaches its trusted health boundary", async ({ page
 
   expect(navigation?.status()).toBe(200);
   expect(navigation?.headers()["www-authenticate"]).toBeUndefined();
+  await expect(page).toHaveTitle("Auralis — See what hearing sounds like");
+  const favicon = page.locator('link[rel~="icon"]').first();
+  await expect(favicon).toHaveAttribute("href", /\/icon\.png/);
   await expect(page.getByRole("heading", { name: "Auralis", level: 1 })).toBeVisible();
   await expect(
-    page.getByText("One family scene. Different listening conditions.", {
-      exact: true,
-    }),
+    page.getByText(
+      "Auralis turns an audiogram into a guided listening comparison.",
+      {
+        exact: true,
+      },
+    ),
   ).toBeVisible();
   await expect(
     page.getByText(
-      "This is an illustrative, non-clinical experience—not a diagnosis, hearing-aid fitting, prescription, or prediction of individual perception.",
-      { exact: true },
+      "Choose a hearing profile, step into an everyday family scene, and hear how distance, background sound, and communication support can change what reaches a listener.",
+      {
+        exact: true,
+      },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Built to help families understand an everyday listening experience—not to diagnose hearing or recommend treatment.",
+      {
+      exact: true,
+      },
     ),
   ).toBeVisible();
   await expect(
@@ -37,7 +53,7 @@ test("public Auralis welcome reaches its trusted health boundary", async ({ page
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Start the comparison" }).click();
   await expect(
-    page.getByRole("heading", { name: "Choose a hearing profile" }),
+    page.getByRole("heading", { name: "Choose a listening profile" }),
   ).toBeFocused();
 
   const healthUrl = authenticatedOrigin

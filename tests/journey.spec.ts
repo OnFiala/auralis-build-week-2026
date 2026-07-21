@@ -64,20 +64,43 @@ async function openExperience(page: Page): Promise<void> {
   ).toBeVisible();
   await page.getByRole("button", { name: "Start the comparison" }).click();
   await expect(
-    page.getByRole("heading", { name: "Choose a hearing profile", level: 2 }),
+    page.getByRole("heading", { name: "Choose a listening profile", level: 2 }),
   ).toBeFocused();
   await expect(page.getByRole("radio")).toHaveCount(4);
+  const exactValues = page.locator("details.profile-values-detail");
+  await expect(exactValues).not.toHaveAttribute("open", "");
+  await expect(exactValues.locator("table")).toBeHidden();
   await expect(
     page.getByRole("button", { name: "Continue to Scene" }),
   ).toBeDisabled();
 }
 
 async function loadManualProfile(page: Page): Promise<void> {
-  await page.getByRole("radio", { name: "Enter an audiogram" }).check();
-  const exactTable = page.getByRole("table", {
-    name: "Enter an audiogram: exact current thresholds",
+  const manualChoice = page.getByRole("radio", { name: "Enter an audiogram" });
+  await manualChoice.check();
+  const exactValues = page.locator("details.profile-values-detail");
+  const exactValuesSummary = exactValues.getByText("Exact threshold values", {
+    exact: true,
   });
+  const exactTable = exactValues.locator("table");
 
+  await expect(exactValues).not.toHaveAttribute("open", "");
+  await expect(exactTable).toBeHidden();
+  await exactValuesSummary.focus();
+  await exactValuesSummary.press("Enter");
+  await expect(exactValues).toHaveAttribute("open", "");
+  await expect(exactTable).toBeVisible();
+  await expect(exactTable).toHaveAccessibleName(
+    "Enter an audiogram: exact current thresholds",
+  );
+  await exactValuesSummary.press("Enter");
+  await expect(exactValues).not.toHaveAttribute("open", "");
+  await expect(exactTable).toBeHidden();
+  await expect(manualChoice).toBeChecked();
+  await expect(
+    page.getByRole("button", { name: "Continue to Scene" }),
+  ).toBeDisabled();
+  await exactValuesSummary.press("Enter");
   await expect(exactTable).toBeVisible();
 
   for (const [ear, values] of Object.entries(manualValues) as [
@@ -413,7 +436,10 @@ test("manual profile completes one attributable live journey", async ({
   await continueToScene.focus();
   await continueToScene.press("Enter");
   await expect(
-    page.getByRole("heading", { name: "Meet the family scene", level: 2 }),
+    page.getByRole("heading", {
+      name: "Step into an everyday family moment",
+      level: 2,
+    }),
   ).toBeFocused();
   await expect(page.locator(".experience-screen")).toHaveCSS(
     "animation-name",
@@ -424,20 +450,24 @@ test("manual profile completes one attributable live journey", async ({
   await backToProfile.focus();
   await backToProfile.press("Enter");
   await expect(
-    page.getByRole("heading", { name: "Choose a hearing profile", level: 2 }),
+    page.getByRole("heading", { name: "Choose a listening profile", level: 2 }),
   ).toBeFocused();
   await expect(
     page
       .getByText(/^Manual audiogram confirmed from revision \d+\.$/)
       .first(),
   ).toBeVisible();
-  await continueToScreen(page, "Scene", "Meet the family scene");
+  await continueToScreen(
+    page,
+    "Scene",
+    "Step into an everyday family moment",
+  );
   await acknowledgeAndLoadSource(page);
   await assertAccessibleSceneTranscript(page);
   await continueToScreen(
     page,
     "Listening",
-    "Compare the same family moment",
+    "Compare the same moment",
   );
   const listeningScreen = page.locator(".listening-screen");
   const referenceCard = listeningScreen.locator(".ab-playback-card-a");
@@ -505,12 +535,15 @@ test("manual profile completes one attributable live journey", async ({
   ).toBeEnabled();
   await page.getByRole("button", { name: "Back" }).click();
   await expect(
-    page.getByRole("heading", { name: "Meet the family scene", level: 2 }),
+    page.getByRole("heading", {
+      name: "Step into an everyday family moment",
+      level: 2,
+    }),
   ).toBeFocused();
   await continueToScreen(
     page,
     "Listening",
-    "Compare the same family moment",
+    "Compare the same moment",
   );
   await expect(
     page.locator(".listening-transport-status"),
@@ -551,7 +584,7 @@ test("manual profile completes one attributable live journey", async ({
   await continueToScreen(
     page,
     "Interventions",
-    "Change the communication conditions",
+    "Try small changes that can help",
   );
 
   const interventionsScreen = page.locator(".interventions-screen");
@@ -665,7 +698,7 @@ test("manual profile completes one attributable live journey", async ({
   await continueToScreen(
     page,
     "Explanation",
-    "Understand this result",
+    "Make sense of what changed",
   );
 
   const explanationScreen = page.locator(".explanation-screen");
@@ -721,7 +754,7 @@ test("manual profile completes one attributable live journey", async ({
   await continueToScreen(
     page,
     "Completion",
-    "Your Auralis comparison",
+    "Take the comparison into a real conversation",
   );
 
   const completionResult = page.locator(".completion-result");
@@ -782,7 +815,7 @@ test("manual profile completes one attributable live journey", async ({
     .getByRole("button", { name: "Start another comparison" })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Choose a hearing profile", level: 2 }),
+    page.getByRole("heading", { name: "Choose a listening profile", level: 2 }),
   ).toBeFocused();
   await expect(completion).toHaveCount(0);
   await expect(
@@ -844,9 +877,18 @@ test("predefined profile completes one honest degraded journey", async ({
     flatLeftValues,
   );
 
-  const exactFlatTable = page.getByRole("table", {
-    name: `${flatProfile.displayName}: exact fixed synthetic thresholds`,
-  });
+  const exactFlatValues = page.locator("details.profile-values-detail");
+  const exactFlatTable = exactFlatValues.locator("table");
+  await expect(exactFlatValues).not.toHaveAttribute("open", "");
+  await expect(exactFlatTable).toBeHidden();
+  await exactFlatValues
+    .getByText("Exact threshold values", { exact: true })
+    .click();
+  await expect(exactFlatValues).toHaveAttribute("open", "");
+  await expect(exactFlatTable).toBeVisible();
+  await expect(exactFlatTable).toHaveAccessibleName(
+    `${flatProfile.displayName}: exact fixed synthetic thresholds`,
+  );
   const flatRows = exactFlatTable.getByRole("row");
 
   await expect(flatRows).toHaveCount(FREQUENCY_GRID_HZ.length + 1);
@@ -871,12 +913,16 @@ test("predefined profile completes one honest degraded journey", async ({
   await expect(
     page.getByRole("button", { name: "Continue to Scene" }),
   ).toBeEnabled();
-  await continueToScreen(page, "Scene", "Meet the family scene");
+  await continueToScreen(
+    page,
+    "Scene",
+    "Step into an everyday family moment",
+  );
   await acknowledgeAndLoadSource(page);
   await continueToScreen(
     page,
     "Listening",
-    "Compare the same family moment",
+    "Compare the same moment",
   );
   await playListeningAndStop(
     page,
@@ -895,12 +941,12 @@ test("predefined profile completes one honest degraded journey", async ({
   await continueToScreen(
     page,
     "Interventions",
-    "Change the communication conditions",
+    "Try small changes that can help",
   );
   await continueToScreen(
     page,
     "Explanation",
-    "Understand this result",
+    "Make sense of what changed",
   );
 
   const explanationScreen = page.locator(".explanation-screen");
@@ -941,7 +987,7 @@ test("predefined profile completes one honest degraded journey", async ({
   await page.getByRole("button", { name: "Back" }).click();
   await expect(
     page.getByRole("heading", {
-      name: "Change the communication conditions",
+      name: "Try small changes that can help",
       level: 2,
     }),
   ).toBeFocused();
@@ -956,7 +1002,7 @@ test("predefined profile completes one honest degraded journey", async ({
   await continueToScreen(
     page,
     "Explanation",
-    "Understand this result",
+    "Make sense of what changed",
   );
   await expect(
     explanationScreen.getByRole("status").filter({
@@ -968,7 +1014,7 @@ test("predefined profile completes one honest degraded journey", async ({
   await continueToScreen(
     page,
     "Completion",
-    "Your Auralis comparison",
+    "Take the comparison into a real conversation",
   );
 
   const completionResult = page.locator(".completion-result");
